@@ -25,8 +25,10 @@ const SCOPES = [
 // --- NEW FUNCTION: Handles Service Account Authentication ---
 // This entire function is new. It is called only when the
 // SERVICE_ACCOUNT_PATH environment variable is set.
+// Supports domain-wide delegation via GOOGLE_IMPERSONATE_USER env var.
 async function authorizeWithServiceAccount(): Promise<JWT> {
   const serviceAccountPath = process.env.SERVICE_ACCOUNT_PATH!; // We know this is set if we are in this function
+  const impersonateUser = process.env.GOOGLE_IMPERSONATE_USER; // Optional: email of user to impersonate
   try {
     const keyFileContent = await fs.readFile(serviceAccountPath, 'utf8');
     const serviceAccountKey = JSON.parse(keyFileContent);
@@ -35,9 +37,14 @@ async function authorizeWithServiceAccount(): Promise<JWT> {
       email: serviceAccountKey.client_email,
       key: serviceAccountKey.private_key,
       scopes: SCOPES,
+      subject: impersonateUser, // Enables domain-wide delegation when set
     });
     await auth.authorize();
-    console.error('Service Account authentication successful!');
+    if (impersonateUser) {
+      console.error(`Service Account authentication successful, impersonating: ${impersonateUser}`);
+    } else {
+      console.error('Service Account authentication successful!');
+    }
     return auth;
   } catch (error: any) {
     if (error.code === 'ENOENT') {

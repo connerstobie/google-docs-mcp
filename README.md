@@ -186,6 +186,54 @@ Now you need to run the server once manually to grant it permission to access yo
 8.  ✅ **Check:** You should now see a new file named `token.json` in your `mcp-googledocs-server` folder.
 9.  ⚠️ **SECURITY WARNING:** This `token.json` file contains the key that allows the server to access your Google account _without_ asking again. Protect it like a password. **Do not commit it to GitHub.** The included `.gitignore` file should prevent this automatically.
 
+### Alternative: Service Account with Domain-Wide Delegation (Enterprise)
+
+For Google Workspace organizations that need to access documents across the domain without individual user OAuth flows, you can use a service account with domain-wide delegation.
+
+**Prerequisites:**
+- Google Workspace admin access to configure domain-wide delegation
+- A service account with domain-wide delegation enabled
+
+**Setup:**
+
+1. **Create a Service Account** in Google Cloud Console:
+   - Go to "APIs & Services" → "Credentials" → "Create Credentials" → "Service Account"
+   - Download the JSON key file
+
+2. **Enable Domain-Wide Delegation** in Google Workspace Admin Console:
+   - Go to Security → API Controls → Domain-wide delegation
+   - Add the service account's client ID with the required scopes:
+     - `https://www.googleapis.com/auth/documents`
+     - `https://www.googleapis.com/auth/drive`
+     - `https://www.googleapis.com/auth/spreadsheets`
+
+3. **Configure Environment Variables:**
+   ```bash
+   # Path to your service account key file
+   export SERVICE_ACCOUNT_PATH="/path/to/service-account-key.json"
+
+   # Email of the user to impersonate (required for domain-wide delegation)
+   export GOOGLE_IMPERSONATE_USER="user@yourdomain.com"
+   ```
+
+4. **Update Claude Desktop Config** (add environment variables):
+   ```json
+   {
+     "mcpServers": {
+       "google-docs-mcp": {
+         "command": "node",
+         "args": ["/PATH/TO/mcp-googledocs-server/dist/server.js"],
+         "env": {
+           "SERVICE_ACCOUNT_PATH": "/path/to/service-account-key.json",
+           "GOOGLE_IMPERSONATE_USER": "user@yourdomain.com"
+         }
+       }
+     }
+   }
+   ```
+
+When `GOOGLE_IMPERSONATE_USER` is set, the server will impersonate that user when accessing Google APIs, allowing access to that user's documents and Drive.
+
 ### Step 6: Configure Claude Desktop (Optional)
 
 If you want to use this server with Claude Desktop, you need to tell Claude how to run it.
