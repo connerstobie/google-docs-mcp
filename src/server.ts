@@ -1,7 +1,7 @@
 // src/server.ts
 import { FastMCP, UserError } from 'fastmcp';
 import { z } from 'zod';
-import { google, docs_v1, drive_v3, sheets_v4 } from 'googleapis';
+import { google, docs_v1, drive_v3, sheets_v4, script_v1 } from 'googleapis';
 import { authorize } from './auth.js';
 import { OAuth2Client } from 'google-auth-library';
 
@@ -21,15 +21,17 @@ NotImplementedError
 } from './types.js';
 import * as GDocsHelpers from './googleDocsApiHelpers.js';
 import * as SheetsHelpers from './googleSheetsApiHelpers.js';
+import * as AppsScriptHelpers from './googleAppsScriptApiHelpers.js';
 
 let authClient: OAuth2Client | null = null;
 let googleDocs: docs_v1.Docs | null = null;
 let googleDrive: drive_v3.Drive | null = null;
 let googleSheets: sheets_v4.Sheets | null = null;
+let googleAppsScript: script_v1.Script | null = null;
 
 // --- Initialization ---
 async function initializeGoogleClient() {
-if (googleDocs && googleDrive && googleSheets) return { authClient, googleDocs, googleDrive, googleSheets };
+if (googleDocs && googleDrive && googleSheets && googleAppsScript) return { authClient, googleDocs, googleDrive, googleSheets, googleAppsScript };
 if (!authClient) { // Check authClient instead of googleDocs to allow re-attempt
 try {
 console.error("Attempting to authorize Google API client...");
@@ -38,6 +40,7 @@ authClient = client; // Assign client here
 googleDocs = google.docs({ version: 'v1', auth: authClient });
 googleDrive = google.drive({ version: 'v3', auth: authClient });
 googleSheets = google.sheets({ version: 'v4', auth: authClient });
+googleAppsScript = google.script({ version: 'v1', auth: authClient });
 console.error("Google API client authorized successfully.");
 } catch (error) {
 console.error("FATAL: Failed to initialize Google API client:", error);
@@ -45,6 +48,7 @@ authClient = null; // Reset on failure
 googleDocs = null;
 googleDrive = null;
 googleSheets = null;
+googleAppsScript = null;
 // Decide if server should exit or just fail tools
 throw new Error("Google client initialization failed. Cannot start server tools.");
 }
@@ -59,12 +63,15 @@ googleDrive = google.drive({ version: 'v3', auth: authClient });
 if (authClient && !googleSheets) {
 googleSheets = google.sheets({ version: 'v4', auth: authClient });
 }
-
-if (!googleDocs || !googleDrive || !googleSheets) {
-throw new Error("Google Docs, Drive, and Sheets clients could not be initialized.");
+if (authClient && !googleAppsScript) {
+googleAppsScript = google.script({ version: 'v1', auth: authClient });
 }
 
-return { authClient, googleDocs, googleDrive, googleSheets };
+if (!googleDocs || !googleDrive || !googleSheets || !googleAppsScript) {
+throw new Error("Google Docs, Drive, Sheets, and Apps Script clients could not be initialized.");
+}
+
+return { authClient, googleDocs, googleDrive, googleSheets, googleAppsScript };
 }
 
 // Set up process-level unhandled error/rejection handlers to prevent crashes
@@ -109,6 +116,15 @@ if (!sheets) {
 throw new UserError("Google Sheets client is not initialized. Authentication might have failed during startup or lost connection.");
 }
 return sheets;
+}
+
+// --- Helper to get Apps Script client within tools ---
+async function getAppsScriptClient() {
+const { googleAppsScript: script } = await initializeGoogleClient();
+if (!script) {
+throw new UserError("Google Apps Script client is not initialized. Authentication might have failed during startup or lost connection.");
+}
+return script;
 }
 
 // === HELPER FUNCTIONS ===
@@ -2166,7 +2182,7 @@ execute: async (args, { log }) => {
   log.info(`Reading spreadsheet ${args.spreadsheetId}, range: ${args.range}`);
 
   try {
-    const response = await SheetsHelpers.readRange(sheets, args.spreadsheetId, args.range);
+    const response = await SheetsHelpers.readRange(sheets, args.spreadsheetId, args.range, args.valueRenderOption);
     const values = response.values || [];
 
     if (values.length === 0) {
@@ -2463,6 +2479,380 @@ execute: async (args, { log }) => {
     log.error(`Error listing Google Sheets: ${error.message || error}`);
     if (error.code === 403) throw new UserError("Permission denied. Make sure you have granted Google Drive access to the application.");
     throw new UserError(`Failed to list spreadsheets: ${error.message || 'Unknown error'}`);
+  }
+}
+});
+
+// ===========================================
+// CONDITIONAL FORMATTING TOOLS
+// ===========================================
+
+server.addTool({
+name: 'addConditionalFormatRule',
+description: 'Adds a conditional formatting rule to a range in a Google Spreadsheet. Rules can highlight cells based on their values.',
+parameters: z.object({
+  spreadsheetId: z.string().describe('The ID of the Google Spreadsheet (from the URL).'),
+  sheetName: z.string().describe('The name of the sheet/tab to apply the rule to.'),
+  range: z.string().describe('A1 notation range to apply formatting to (e.g., "A1:D10" or "D3:F9").'),
+  conditionType: z.enum([
+    'NUMBER_GREATER',
+    'NUMBER_LESS',
+    'NUMBER_EQ',
+    'NUMBER_GREATER_THAN_EQ',
+    'NUMBER_LESS_THAN_EQ',
+    'TEXT_CONTAINS',
+    'TEXT_NOT_CONTAINS',
+    'BLANK',
+    'NOT_BLANK',
+    'CUSTOM_FORMULA'
+  ]).describe('The type of condition to check.'),
+  conditionValue: z.string().optional().describe('The value to compare against (e.g., "0" for NUMBER_GREATER than 0, or a formula for CUSTOM_FORMULA like "=$A1>0").'),
+  backgroundColor: z.string().optional().describe('Background color in hex format (e.g., "#f4cccc" for light red, "#d9ead3" for light green).'),
+  textColor: z.string().optional().describe('Text color in hex format (e.g., "#FF0000" for red).'),
+  bold: z.boolean().optional().describe('Whether to make the text bold.'),
+  italic: z.boolean().optional().describe('Whether to make the text italic.'),
+}),
+execute: async (args, { log }) => {
+  const sheets = await getSheetsClient();
+  log.info(`Adding conditional format rule to spreadsheet ${args.spreadsheetId}, sheet: ${args.sheetName}, range: ${args.range}`);
+
+  try {
+    // Get the sheet ID from the sheet name
+    const metadata = await SheetsHelpers.getSpreadsheetMetadata(sheets, args.spreadsheetId);
+    const sheet = metadata.sheets?.find(s => s.properties?.title === args.sheetName);
+
+    if (!sheet?.properties?.sheetId) {
+      throw new UserError(`Sheet "${args.sheetName}" not found in spreadsheet.`);
+    }
+
+    const sheetId = sheet.properties.sheetId;
+
+    // Parse the A1 range
+    const rangeMatch = args.range.match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/i);
+    if (!rangeMatch) {
+      throw new UserError(`Invalid range format: ${args.range}. Expected format like "A1:D10"`);
+    }
+
+    function colToIndex(col: string): number {
+      let index = 0;
+      col = col.toUpperCase();
+      for (let i = 0; i < col.length; i++) {
+        index = index * 26 + (col.charCodeAt(i) - 64);
+      }
+      return index - 1;
+    }
+
+    const startCol = colToIndex(rangeMatch[1]);
+    const startRow = parseInt(rangeMatch[2], 10) - 1;
+    const endCol = colToIndex(rangeMatch[3]) + 1; // exclusive
+    const endRow = parseInt(rangeMatch[4], 10); // exclusive
+
+    // Build the rule
+    const rule: {
+      type: 'NUMBER_GREATER' | 'NUMBER_LESS' | 'NUMBER_EQ' | 'NUMBER_GREATER_THAN_EQ' | 'NUMBER_LESS_THAN_EQ' | 'TEXT_CONTAINS' | 'TEXT_NOT_CONTAINS' | 'BLANK' | 'NOT_BLANK' | 'CUSTOM_FORMULA';
+      values?: string[];
+      backgroundColor?: { red: number; green: number; blue: number };
+      textColor?: { red: number; green: number; blue: number };
+      bold?: boolean;
+      italic?: boolean;
+    } = {
+      type: args.conditionType,
+    };
+
+    if (args.conditionValue) {
+      rule.values = [args.conditionValue];
+    }
+
+    if (args.backgroundColor) {
+      const bg = SheetsHelpers.hexToRgb(args.backgroundColor);
+      if (bg) rule.backgroundColor = bg;
+    }
+
+    if (args.textColor) {
+      const tc = SheetsHelpers.hexToRgb(args.textColor);
+      if (tc) rule.textColor = tc;
+    }
+
+    if (args.bold !== undefined) rule.bold = args.bold;
+    if (args.italic !== undefined) rule.italic = args.italic;
+
+    await SheetsHelpers.addConditionalFormatRule(
+      sheets,
+      args.spreadsheetId,
+      sheetId,
+      {
+        startRowIndex: startRow,
+        endRowIndex: endRow,
+        startColumnIndex: startCol,
+        endColumnIndex: endCol,
+      },
+      rule
+    );
+
+    return `Successfully added conditional formatting rule to range ${args.range} on sheet "${args.sheetName}". Condition: ${args.conditionType}${args.conditionValue ? ` (value: ${args.conditionValue})` : ''}`;
+  } catch (error: any) {
+    log.error(`Error adding conditional format rule: ${error.message || error}`);
+    if (error instanceof UserError) throw error;
+    throw new UserError(`Failed to add conditional format rule: ${error.message || 'Unknown error'}`);
+  }
+}
+});
+
+server.addTool({
+name: 'getConditionalFormatRules',
+description: 'Gets all conditional formatting rules for a Google Spreadsheet or a specific sheet.',
+parameters: z.object({
+  spreadsheetId: z.string().describe('The ID of the Google Spreadsheet (from the URL).'),
+  sheetName: z.string().optional().describe('Optional: The name of a specific sheet to get rules for. If not provided, returns rules for all sheets.'),
+}),
+execute: async (args, { log }) => {
+  const sheets = await getSheetsClient();
+  log.info(`Getting conditional format rules for spreadsheet ${args.spreadsheetId}${args.sheetName ? `, sheet: ${args.sheetName}` : ''}`);
+
+  try {
+    let sheetId: number | undefined;
+
+    if (args.sheetName) {
+      const metadata = await SheetsHelpers.getSpreadsheetMetadata(sheets, args.spreadsheetId);
+      const sheet = metadata.sheets?.find(s => s.properties?.title === args.sheetName);
+      if (!sheet?.properties?.sheetId) {
+        throw new UserError(`Sheet "${args.sheetName}" not found in spreadsheet.`);
+      }
+      sheetId = sheet.properties.sheetId;
+    }
+
+    const results = await SheetsHelpers.getConditionalFormatRules(sheets, args.spreadsheetId, sheetId);
+
+    if (results.length === 0 || results.every(r => r.rules.length === 0)) {
+      return "No conditional formatting rules found.";
+    }
+
+    let output = "**Conditional Formatting Rules:**\n\n";
+
+    for (const sheetRules of results) {
+      if (sheetRules.rules.length === 0) continue;
+
+      output += `### Sheet: ${sheetRules.sheetName} (ID: ${sheetRules.sheetId})\n\n`;
+
+      sheetRules.rules.forEach((rule, index) => {
+        output += `**Rule ${index + 1}:**\n`;
+
+        if (rule.ranges && rule.ranges.length > 0) {
+          const range = rule.ranges[0];
+          output += `- Range: Row ${(range.startRowIndex || 0) + 1} to ${range.endRowIndex || 'end'}, Col ${(range.startColumnIndex || 0) + 1} to ${range.endColumnIndex || 'end'}\n`;
+        }
+
+        if (rule.booleanRule) {
+          const cond = rule.booleanRule.condition;
+          output += `- Condition: ${cond?.type || 'Unknown'}`;
+          if (cond?.values && cond.values.length > 0) {
+            output += ` (${cond.values.map(v => v.userEnteredValue || v.relativeDate || 'value').join(', ')})`;
+          }
+          output += '\n';
+
+          const format = rule.booleanRule.format;
+          if (format?.backgroundColor) {
+            const bg = format.backgroundColor;
+            output += `- Background: rgb(${Math.round((bg.red || 0) * 255)}, ${Math.round((bg.green || 0) * 255)}, ${Math.round((bg.blue || 0) * 255)})\n`;
+          }
+          if (format?.textFormat) {
+            if (format.textFormat.foregroundColor) {
+              const fg = format.textFormat.foregroundColor;
+              output += `- Text Color: rgb(${Math.round((fg.red || 0) * 255)}, ${Math.round((fg.green || 0) * 255)}, ${Math.round((fg.blue || 0) * 255)})\n`;
+            }
+            if (format.textFormat.bold) output += `- Bold: true\n`;
+            if (format.textFormat.italic) output += `- Italic: true\n`;
+          }
+        }
+
+        if (rule.gradientRule) {
+          output += `- Type: Gradient (color scale)\n`;
+        }
+
+        output += '\n';
+      });
+    }
+
+    return output;
+  } catch (error: any) {
+    log.error(`Error getting conditional format rules: ${error.message || error}`);
+    if (error instanceof UserError) throw error;
+    throw new UserError(`Failed to get conditional format rules: ${error.message || 'Unknown error'}`);
+  }
+}
+});
+
+server.addTool({
+name: 'deleteConditionalFormatRule',
+description: 'Deletes a specific conditional formatting rule by its index from a sheet.',
+parameters: z.object({
+  spreadsheetId: z.string().describe('The ID of the Google Spreadsheet (from the URL).'),
+  sheetName: z.string().describe('The name of the sheet containing the rule.'),
+  ruleIndex: z.number().int().min(0).describe('The index of the rule to delete (0-based). Use getConditionalFormatRules to see rule indices.'),
+}),
+execute: async (args, { log }) => {
+  const sheets = await getSheetsClient();
+  log.info(`Deleting conditional format rule ${args.ruleIndex} from spreadsheet ${args.spreadsheetId}, sheet: ${args.sheetName}`);
+
+  try {
+    const metadata = await SheetsHelpers.getSpreadsheetMetadata(sheets, args.spreadsheetId);
+    const sheet = metadata.sheets?.find(s => s.properties?.title === args.sheetName);
+
+    if (!sheet?.properties?.sheetId) {
+      throw new UserError(`Sheet "${args.sheetName}" not found in spreadsheet.`);
+    }
+
+    const sheetId = sheet.properties.sheetId;
+
+    await SheetsHelpers.deleteConditionalFormatRule(sheets, args.spreadsheetId, sheetId, args.ruleIndex);
+
+    return `Successfully deleted conditional formatting rule at index ${args.ruleIndex} from sheet "${args.sheetName}".`;
+  } catch (error: any) {
+    log.error(`Error deleting conditional format rule: ${error.message || error}`);
+    if (error instanceof UserError) throw error;
+    throw new UserError(`Failed to delete conditional format rule: ${error.message || 'Unknown error'}`);
+  }
+}
+});
+
+server.addTool({
+name: 'clearConditionalFormatRules',
+description: 'Removes all conditional formatting rules from a specific sheet.',
+parameters: z.object({
+  spreadsheetId: z.string().describe('The ID of the Google Spreadsheet (from the URL).'),
+  sheetName: z.string().describe('The name of the sheet to clear rules from.'),
+}),
+execute: async (args, { log }) => {
+  const sheets = await getSheetsClient();
+  log.info(`Clearing all conditional format rules from spreadsheet ${args.spreadsheetId}, sheet: ${args.sheetName}`);
+
+  try {
+    const metadata = await SheetsHelpers.getSpreadsheetMetadata(sheets, args.spreadsheetId);
+    const sheet = metadata.sheets?.find(s => s.properties?.title === args.sheetName);
+
+    if (!sheet?.properties?.sheetId) {
+      throw new UserError(`Sheet "${args.sheetName}" not found in spreadsheet.`);
+    }
+
+    const sheetId = sheet.properties.sheetId;
+
+    await SheetsHelpers.clearConditionalFormatRules(sheets, args.spreadsheetId, sheetId);
+
+    return `Successfully cleared all conditional formatting rules from sheet "${args.sheetName}".`;
+  } catch (error: any) {
+    log.error(`Error clearing conditional format rules: ${error.message || error}`);
+    if (error instanceof UserError) throw error;
+    throw new UserError(`Failed to clear conditional format rules: ${error.message || 'Unknown error'}`);
+  }
+}
+});
+
+// ===== APPS SCRIPT TOOLS =====
+
+server.addTool({
+name: 'listAppsScriptFiles',
+description: 'Lists all files in a Google Apps Script project.',
+parameters: z.object({
+  scriptId: z.string().describe('The Script ID (found in Project Settings in the Apps Script editor).'),
+}),
+execute: async (args, { log }) => {
+  const script = await getAppsScriptClient();
+  log.info(`Listing files in Apps Script project: ${args.scriptId}`);
+
+  try {
+    const files = await AppsScriptHelpers.listScriptFiles(script, args.scriptId);
+
+    const fileList = files.map(f => `- ${f.name} (${f.type})`).join('\n');
+    return `**Apps Script Project Files:**\n${fileList}`;
+  } catch (error: any) {
+    log.error(`Error listing script files: ${error.message || error}`);
+    if (error instanceof UserError) throw error;
+    throw new UserError(`Failed to list script files: ${error.message || 'Unknown error'}`);
+  }
+}
+});
+
+server.addTool({
+name: 'readAppsScriptFile',
+description: 'Reads the source code of a specific file in a Google Apps Script project.',
+parameters: z.object({
+  scriptId: z.string().describe('The Script ID (found in Project Settings in the Apps Script editor).'),
+  fileName: z.string().describe('The name of the file to read (without extension, e.g., "Code" not "Code.gs").'),
+}),
+execute: async (args, { log }) => {
+  const script = await getAppsScriptClient();
+  log.info(`Reading file "${args.fileName}" from Apps Script project: ${args.scriptId}`);
+
+  try {
+    const file = await AppsScriptHelpers.getScriptFile(script, args.scriptId, args.fileName);
+
+    if (!file) {
+      throw new UserError(`File "${args.fileName}" not found in script project.`);
+    }
+
+    return `**File: ${file.name}** (${file.type})\n\n\`\`\`javascript\n${file.source}\n\`\`\``;
+  } catch (error: any) {
+    log.error(`Error reading script file: ${error.message || error}`);
+    if (error instanceof UserError) throw error;
+    throw new UserError(`Failed to read script file: ${error.message || 'Unknown error'}`);
+  }
+}
+});
+
+server.addTool({
+name: 'updateAppsScriptFile',
+description: 'Updates the source code of a specific file in a Google Apps Script project.',
+parameters: z.object({
+  scriptId: z.string().describe('The Script ID (found in Project Settings in the Apps Script editor).'),
+  fileName: z.string().describe('The name of the file to update (without extension, e.g., "Code" not "Code.gs").'),
+  source: z.string().describe('The new source code for the file.'),
+  fileType: z.enum(['SERVER_JS', 'HTML', 'JSON']).optional().default('SERVER_JS').describe('The file type (SERVER_JS for .gs files, HTML for .html files, JSON for appsscript.json).'),
+}),
+execute: async (args, { log }) => {
+  const script = await getAppsScriptClient();
+  log.info(`Updating file "${args.fileName}" in Apps Script project: ${args.scriptId}`);
+
+  try {
+    await AppsScriptHelpers.updateScriptFile(
+      script,
+      args.scriptId,
+      args.fileName,
+      args.source,
+      args.fileType
+    );
+
+    return `Successfully updated file "${args.fileName}" in Apps Script project.`;
+  } catch (error: any) {
+    log.error(`Error updating script file: ${error.message || error}`);
+    if (error instanceof UserError) throw error;
+    throw new UserError(`Failed to update script file: ${error.message || 'Unknown error'}`);
+  }
+}
+});
+
+server.addTool({
+name: 'getAppsScriptMetadata',
+description: 'Gets metadata about a Google Apps Script project (title, create time, update time, etc.).',
+parameters: z.object({
+  scriptId: z.string().describe('The Script ID (found in Project Settings in the Apps Script editor).'),
+}),
+execute: async (args, { log }) => {
+  const script = await getAppsScriptClient();
+  log.info(`Getting metadata for Apps Script project: ${args.scriptId}`);
+
+  try {
+    const metadata = await AppsScriptHelpers.getScriptMetadata(script, args.scriptId);
+
+    return `**Apps Script Project Metadata:**
+- **Title:** ${metadata.title || 'Unknown'}
+- **Script ID:** ${metadata.scriptId || args.scriptId}
+- **Parent ID:** ${metadata.parentId || 'None (standalone script)'}
+- **Create Time:** ${metadata.createTime || 'Unknown'}
+- **Update Time:** ${metadata.updateTime || 'Unknown'}`;
+  } catch (error: any) {
+    log.error(`Error getting script metadata: ${error.message || error}`);
+    if (error instanceof UserError) throw error;
+    throw new UserError(`Failed to get script metadata: ${error.message || 'Unknown error'}`);
   }
 }
 });

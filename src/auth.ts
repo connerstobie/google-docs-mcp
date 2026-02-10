@@ -19,7 +19,8 @@ const CREDENTIALS_PATH = path.join(projectRootDir, 'credentials.json');
 const SCOPES = [
   'https://www.googleapis.com/auth/documents',
   'https://www.googleapis.com/auth/drive', // Full Drive access for listing, searching, and document discovery
-  'https://www.googleapis.com/auth/spreadsheets' // Google Sheets API access
+  'https://www.googleapis.com/auth/spreadsheets', // Google Sheets API access
+  'https://www.googleapis.com/auth/script.projects' // Google Apps Script API access
 ];
 
 // --- NEW FUNCTION: Handles Service Account Authentication ---
@@ -97,8 +98,8 @@ async function saveCredentials(client: OAuth2Client): Promise<void> {
 
 async function authenticate(): Promise<OAuth2Client> {
   const { client_secret, client_id, redirect_uris, client_type } = await loadClientSecrets();
-  // For web clients, use the configured redirect URI; for desktop clients, use 'urn:ietf:wg:oauth:2.0:oob'
-  const redirectUri = client_type === 'web' ? redirect_uris[0] : 'urn:ietf:wg:oauth:2.0:oob';
+  // Always use the configured redirect URI (localhost) - OOB flow is deprecated
+  const redirectUri = redirect_uris[0] || 'http://localhost';
   console.error(`DEBUG: Using redirect URI: ${redirectUri}`);
   console.error(`DEBUG: Client type: ${client_type}`);
   const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirectUri);

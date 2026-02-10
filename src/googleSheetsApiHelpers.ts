@@ -73,12 +73,14 @@ export function normalizeRange(range: string, sheetName?: string): string {
 export async function readRange(
   sheets: Sheets,
   spreadsheetId: string,
-  range: string
+  range: string,
+  valueRenderOption: 'FORMATTED_VALUE' | 'UNFORMATTED_VALUE' | 'FORMULA' = 'FORMATTED_VALUE'
 ): Promise<sheets_v4.Schema$ValueRange> {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range,
+      valueRenderOption,
     });
     return response.data;
   } catch (error: any) {
@@ -423,5 +425,235 @@ export function hexToRgb(hex: string): { red: number; green: number; blue: numbe
     green: ((bigint >> 8) & 255) / 255,
     blue: (bigint & 255) / 255,
   };
+}
+
+/**
+ * Adds a conditional formatting rule to a spreadsheet range
+ */
+export async function addConditionalFormatRule(
+  sheets: Sheets,
+  spreadsheetId: string,
+  sheetId: number,
+  range: {
+    startRowIndex: number;
+    endRowIndex: number;
+    startColumnIndex: number;
+    endColumnIndex: number;
+  },
+  rule: {
+    type: 'NUMBER_GREATER' | 'NUMBER_LESS' | 'NUMBER_EQ' | 'NUMBER_GREATER_THAN_EQ' | 'NUMBER_LESS_THAN_EQ' | 'TEXT_CONTAINS' | 'TEXT_NOT_CONTAINS' | 'BLANK' | 'NOT_BLANK' | 'CUSTOM_FORMULA';
+    values?: string[];
+    backgroundColor?: { red: number; green: number; blue: number };
+    textColor?: { red: number; green: number; blue: number };
+    bold?: boolean;
+    italic?: boolean;
+  },
+  index: number = 0
+): Promise<sheets_v4.Schema$BatchUpdateSpreadsheetResponse> {
+  try {
+    const format: sheets_v4.Schema$CellFormat = {};
+
+    if (rule.backgroundColor) {
+      format.backgroundColor = {
+        red: rule.backgroundColor.red,
+        green: rule.backgroundColor.green,
+        blue: rule.backgroundColor.blue,
+        alpha: 1,
+      };
+    }
+
+    if (rule.textColor || rule.bold !== undefined || rule.italic !== undefined) {
+      format.textFormat = {};
+      if (rule.textColor) {
+        format.textFormat.foregroundColor = {
+          red: rule.textColor.red,
+          green: rule.textColor.green,
+          blue: rule.textColor.blue,
+          alpha: 1,
+        };
+      }
+      if (rule.bold !== undefined) {
+        format.textFormat.bold = rule.bold;
+      }
+      if (rule.italic !== undefined) {
+        format.textFormat.italic = rule.italic;
+      }
+    }
+
+    const booleanCondition: sheets_v4.Schema$BooleanCondition = {
+      type: rule.type,
+    };
+
+    if (rule.values && rule.values.length > 0) {
+      booleanCondition.values = rule.values.map(v => ({ userEnteredValue: v }));
+    }
+
+    const response = await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            addConditionalFormatRule: {
+              rule: {
+                ranges: [
+                  {
+                    sheetId,
+                    startRowIndex: range.startRowIndex,
+                    endRowIndex: range.endRowIndex,
+                    startColumnIndex: range.startColumnIndex,
+                    endColumnIndex: range.endColumnIndex,
+                  },
+                ],
+                booleanRule: {
+                  condition: booleanCondition,
+                  format,
+                },
+              },
+              index,
+            },
+          },
+        ],
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    if (error.code === 404) {
+      throw new UserError(`Spreadsheet not found (ID: ${spreadsheetId}). Check the ID.`);
+    }
+    if (error.code === 403) {
+      throw new UserError(`Permission denied for spreadsheet (ID: ${spreadsheetId}). Ensure you have write access.`);
+    }
+    throw new UserError(`Failed to add conditional format rule: ${error.message || 'Unknown error'}`);
+  }
+}
+
+/**
+ * Gets all conditional formatting rules for a spreadsheet
+ */
+export async function getConditionalFormatRules(
+  sheets: Sheets,
+  spreadsheetId: string,
+  sheetId?: number
+): Promise<{ sheetId: number; sheetName: string; rules: sheets_v4.Schema$ConditionalFormatRule[] }[]> {
+  try {
+    const response = await sheets.spreadsheets.get({
+      spreadsheetId,
+      includeGridData: false,
+      fields: 'sheets(properties(sheetId,title),conditionalFormats)',
+    });
+
+    const results: { sheetId: number; sheetName: string; rules: sheets_v4.Schema$ConditionalFormatRule[] }[] = [];
+
+    for (const sheet of response.data.sheets || []) {
+      const currentSheetId = sheet.properties?.sheetId;
+      const sheetName = sheet.properties?.title || 'Unknown';
+
+      // Skip if we're filtering by sheetId and this isn't the one
+      if (sheetId !== undefined && currentSheetId !== sheetId) {
+        continue;
+      }
+
+      if (currentSheetId != null) {
+        results.push({
+          sheetId: currentSheetId,
+          sheetName,
+          rules: sheet.conditionalFormats || [],
+        });
+      }
+    }
+
+    return results;
+  } catch (error: any) {
+    if (error.code === 404) {
+      throw new UserError(`Spreadsheet not found (ID: ${spreadsheetId}). Check the ID.`);
+    }
+    if (error.code === 403) {
+      throw new UserError(`Permission denied for spreadsheet (ID: ${spreadsheetId}). Ensure you have read access.`);
+    }
+    throw new UserError(`Failed to get conditional format rules: ${error.message || 'Unknown error'}`);
+  }
+}
+
+/**
+ * Deletes a conditional formatting rule by index
+ */
+export async function deleteConditionalFormatRule(
+  sheets: Sheets,
+  spreadsheetId: string,
+  sheetId: number,
+  index: number
+): Promise<sheets_v4.Schema$BatchUpdateSpreadsheetResponse> {
+  try {
+    const response = await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            deleteConditionalFormatRule: {
+              sheetId,
+              index,
+            },
+          },
+        ],
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    if (error.code === 404) {
+      throw new UserError(`Spreadsheet not found (ID: ${spreadsheetId}). Check the ID.`);
+    }
+    if (error.code === 403) {
+      throw new UserError(`Permission denied for spreadsheet (ID: ${spreadsheetId}). Ensure you have write access.`);
+    }
+    throw new UserError(`Failed to delete conditional format rule: ${error.message || 'Unknown error'}`);
+  }
+}
+
+/**
+ * Clears all conditional formatting rules from a sheet
+ */
+export async function clearConditionalFormatRules(
+  sheets: Sheets,
+  spreadsheetId: string,
+  sheetId: number
+): Promise<sheets_v4.Schema$BatchUpdateSpreadsheetResponse> {
+  try {
+    // First get existing rules to know how many to delete
+    const existingRules = await getConditionalFormatRules(sheets, spreadsheetId, sheetId);
+    const sheetRules = existingRules.find(s => s.sheetId === sheetId);
+
+    if (!sheetRules || sheetRules.rules.length === 0) {
+      return { spreadsheetId }; // No rules to delete
+    }
+
+    // Delete all rules (from last to first to maintain indices)
+    const requests = [];
+    for (let i = sheetRules.rules.length - 1; i >= 0; i--) {
+      requests.push({
+        deleteConditionalFormatRule: {
+          sheetId,
+          index: i,
+        },
+      });
+    }
+
+    const response = await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: { requests },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    if (error.code === 404) {
+      throw new UserError(`Spreadsheet not found (ID: ${spreadsheetId}). Check the ID.`);
+    }
+    if (error.code === 403) {
+      throw new UserError(`Permission denied for spreadsheet (ID: ${spreadsheetId}). Ensure you have write access.`);
+    }
+    if (error instanceof UserError) throw error;
+    throw new UserError(`Failed to clear conditional format rules: ${error.message || 'Unknown error'}`);
+  }
 }
 
