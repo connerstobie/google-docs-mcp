@@ -21,7 +21,7 @@ const server = new FastMCP({
   version: '1.0.0',
 });
 
-// Register all 44 tools from individual modules
+// Register all tools from individual modules
 registerAllTools(server);
 
 // --- Server Startup ---

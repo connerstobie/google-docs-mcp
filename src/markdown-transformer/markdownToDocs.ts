@@ -586,28 +586,44 @@ function finalizeFormatting(context: ConversionContext): void {
     });
   }
 
-  // List formatting (bottom-to-top to avoid index shifts from tab consumption)
-  const listItemsForFormatting = context.pendingListItems
+  // List formatting: merge contiguous items of the same bullet type into single
+  // ranges so Google Docs treats them as one list (with sequential numbering).
+  const validListItems = context.pendingListItems
     .filter((item) => item.endIndex !== undefined && item.endIndex > item.startIndex)
-    .sort((a, b) => b.startIndex - a.startIndex);
+    .sort((a, b) => a.startIndex - b.startIndex);
 
-  for (const listItem of listItemsForFormatting) {
-    if (listItem.endIndex !== undefined && listItem.endIndex > listItem.startIndex) {
-      const rangeLocation: docs_v1.Schema$Range = {
-        startIndex: listItem.startIndex,
-        endIndex: listItem.endIndex,
-      };
-      if (context.tabId) {
-        rangeLocation.tabId = context.tabId;
-      }
-
-      context.formatRequests.push({
-        createParagraphBullets: {
-          range: rangeLocation,
-          bulletPreset: listItem.bulletPreset,
-        },
+  const mergedListRanges: { startIndex: number; endIndex: number; bulletPreset: string }[] = [];
+  for (const item of validListItems) {
+    const last = mergedListRanges[mergedListRanges.length - 1];
+    if (last && last.bulletPreset === item.bulletPreset) {
+      last.endIndex = Math.max(last.endIndex, item.endIndex!);
+    } else {
+      mergedListRanges.push({
+        startIndex: item.startIndex,
+        endIndex: item.endIndex!,
+        bulletPreset: item.bulletPreset,
       });
     }
+  }
+
+  // Apply bottom-to-top to avoid index shifts from tab consumption
+  mergedListRanges.sort((a, b) => b.startIndex - a.startIndex);
+
+  for (const merged of mergedListRanges) {
+    const rangeLocation: docs_v1.Schema$Range = {
+      startIndex: merged.startIndex,
+      endIndex: merged.endIndex,
+    };
+    if (context.tabId) {
+      rangeLocation.tabId = context.tabId;
+    }
+
+    context.formatRequests.push({
+      createParagraphBullets: {
+        range: rangeLocation,
+        bulletPreset: merged.bulletPreset,
+      },
+    });
   }
 }
 

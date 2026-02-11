@@ -4,11 +4,11 @@ Tools for reading, writing, and managing Google Spreadsheets, including cell dat
 
 | Tool | Description |
 |------|-------------|
-| `readSpreadsheet` | Reads data from a specific range in a Google Spreadsheet. |
-| `writeSpreadsheet` | Writes data to a specific range in a Google Spreadsheet, overwriting existing data. |
-| `appendSpreadsheetRows` | Appends rows of data to the end of a sheet in a Google Spreadsheet. |
-| `clearSpreadsheetRange` | Clears all values from a specific range in a Google Spreadsheet. |
-| `getSpreadsheetInfo` | Gets detailed information about a Google Spreadsheet including all sheets/tabs. |
-| `addSpreadsheetSheet` | Adds a new sheet/tab to an existing Google Spreadsheet. |
-| `createSpreadsheet` | Creates a new Google Spreadsheet. |
-| `listGoogleSheets` | Lists Google Spreadsheets from your Google Drive with optional filtering. |
+| `readSpreadsheet` | Reads data from a range in a spreadsheet |
+| `writeSpreadsheet` | Writes data to a range, overwriting existing values |
+| `appendRows` | Appends rows to the end of a sheet |
+| `clearRange` | Clears all cell values in a range without deleting cells |
+| `getSpreadsheetInfo` | Gets metadata about a spreadsheet including all sheets |
+| `addSheet` | Adds a new sheet (tab) to an existing spreadsheet |
+| `createSpreadsheet` | Creates a new spreadsheet |
+| `listSpreadsheets` | Lists spreadsheets in your Drive |

@@ -8,9 +8,9 @@ import { docsJsonToMarkdown } from '../../markdown-transformer/index.js';
 
 export function register(server: FastMCP) {
   server.addTool({
-    name: 'readGoogleDoc',
+    name: 'readDocument',
     description:
-      'Reads the content of a specific Google Document, optionally returning structured data.',
+      'Reads the content of a Google Document. Returns plain text by default. Use format=\'markdown\' to get formatted content suitable for editing and re-uploading with replaceDocumentWithMarkdown, or format=\'json\' for the raw document structure.',
     parameters: DocumentIdParameter.extend({
       format: z
         .enum(['text', 'json', 'markdown'])

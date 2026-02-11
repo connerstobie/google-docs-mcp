@@ -8,9 +8,9 @@ import { insertMarkdown, formatInsertResult } from '../../markdown-transformer/i
 
 export function register(server: FastMCP) {
   server.addTool({
-    name: 'appendMarkdownToGoogleDoc',
+    name: 'appendMarkdown',
     description:
-      'Appends markdown content to the end of a Google Document with full formatting. Supports headings, bold, italic, strikethrough, links, and lists.',
+      'Appends formatted content to the end of a document using markdown syntax. Supports headings, bold, italic, strikethrough, links, and bullet/numbered lists. Use this instead of appendText when you need formatting.',
     parameters: DocumentIdParameter.extend({
       markdown: z
         .string()

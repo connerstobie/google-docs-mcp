@@ -10,7 +10,7 @@ export function register(server: FastMCP) {
   server.addTool({
     name: 'replaceDocumentWithMarkdown',
     description:
-      'Replaces the entire content of a Google Document with markdown-formatted content. Supports headings (# H1-###### H6), bold (**bold**), italic (*italic*), strikethrough (~~strike~~), links ([text](url)), and lists (bullet and numbered).',
+      'Replaces the entire document body with content parsed from markdown. Supports headings, bold, italic, strikethrough, links, and bullet/numbered lists. Use readDocument with format=\'markdown\' first to get the current content, edit it, then call this tool to apply changes.',
     parameters: DocumentIdParameter.extend({
       markdown: z.string().min(1).describe('The markdown content to apply to the document.'),
       preserveTitle: z

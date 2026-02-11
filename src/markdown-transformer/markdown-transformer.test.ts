@@ -106,7 +106,7 @@ describe('Markdown to Docs Conversion', () => {
       const requests = convertMarkdownToRequests('- Item 1\n- Item 2\n- Item 3', 1);
 
       const bulletReqs = requests.filter((r) => r.createParagraphBullets);
-      expect(bulletReqs).toHaveLength(3);
+      expect(bulletReqs).toHaveLength(1);
       expect(bulletReqs[0].createParagraphBullets!.bulletPreset).toBe(
         'BULLET_DISC_CIRCLE_SQUARE',
       );
@@ -116,7 +116,7 @@ describe('Markdown to Docs Conversion', () => {
       const requests = convertMarkdownToRequests('1. Item 1\n2. Item 2\n3. Item 3', 1);
 
       const bulletReqs = requests.filter((r) => r.createParagraphBullets);
-      expect(bulletReqs).toHaveLength(3);
+      expect(bulletReqs).toHaveLength(1);
       expect(bulletReqs[0].createParagraphBullets!.bulletPreset).toBe(
         'NUMBERED_DECIMAL_ALPHA_ROMAN',
       );
@@ -131,13 +131,66 @@ describe('Markdown to Docs Conversion', () => {
       expect(insertReqs.some((r) => r.insertText!.text!.includes('Child'))).toBe(true);
     });
 
+    it('should insert multiple tabs for deeply nested lists (3 levels)', () => {
+      const markdown = '- Level 0\n  - Level 1\n    - Level 2';
+      const requests = convertMarkdownToRequests(markdown, 1);
+
+      const insertReqs = requests.filter((r) => r.insertText);
+      // Level 0 has no tab, Level 1 has 1 tab, Level 2 has 2 tabs
+      expect(insertReqs.some((r) => r.insertText!.text === '\t\t')).toBe(true);
+      expect(insertReqs.some((r) => r.insertText!.text!.includes('Level 2'))).toBe(true);
+    });
+
+    it('should use ordered preset for nested ordered list inside bullets', () => {
+      const markdown = '- Bullet parent\n  1. Ordered child 1\n  2. Ordered child 2';
+      const requests = convertMarkdownToRequests(markdown, 1);
+
+      const bulletReqs = requests.filter((r) => r.createParagraphBullets);
+      const presets = bulletReqs.map((r) => r.createParagraphBullets!.bulletPreset);
+      expect(presets).toContain('BULLET_DISC_CIRCLE_SQUARE');
+      expect(presets).toContain('NUMBERED_DECIMAL_ALPHA_ROMAN');
+    });
+
+    it('should use bullet preset for nested bullets inside ordered list', () => {
+      const markdown = '1. Ordered parent\n  - Bullet child 1\n  - Bullet child 2';
+      const requests = convertMarkdownToRequests(markdown, 1);
+
+      const bulletReqs = requests.filter((r) => r.createParagraphBullets);
+      const presets = bulletReqs.map((r) => r.createParagraphBullets!.bulletPreset);
+      expect(presets).toContain('NUMBERED_DECIMAL_ALPHA_ROMAN');
+      expect(presets).toContain('BULLET_DISC_CIRCLE_SQUARE');
+    });
+
+    it('should produce separate bullet requests for mixed nested list types', () => {
+      const markdown = '- Parent\n  1. Child\n- Parent 2';
+      const requests = convertMarkdownToRequests(markdown, 1);
+
+      const bulletReqs = requests.filter((r) => r.createParagraphBullets);
+      // Bullet and ordered are different presets so they cannot merge
+      expect(bulletReqs.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('should merge sibling items of the same type even around nested sub-lists', () => {
+      // Both "Parent 1" and "Parent 2" are BULLET_DISC_CIRCLE_SQUARE at level 0.
+      // The ordered sub-list between them is a different preset.
+      const markdown = '- Parent 1\n  1. Ordered child\n- Parent 2';
+      const requests = convertMarkdownToRequests(markdown, 1);
+
+      const allText = requests
+        .filter((r) => r.insertText)
+        .map((r) => r.insertText!.text)
+        .join('');
+      expect(allText).toContain('Parent 1');
+      expect(allText).toContain('Ordered child');
+      expect(allText).toContain('Parent 2');
+    });
+
     it('should convert markdown task lists to checkbox bullets', () => {
       const requests = convertMarkdownToRequests('- [x] done\n- [ ] todo', 1);
 
       const bulletReqs = requests.filter((r) => r.createParagraphBullets);
-      expect(bulletReqs).toHaveLength(2);
+      expect(bulletReqs).toHaveLength(1);
       expect(bulletReqs[0].createParagraphBullets!.bulletPreset).toBe('BULLET_CHECKBOX');
-      expect(bulletReqs[1].createParagraphBullets!.bulletPreset).toBe('BULLET_CHECKBOX');
 
       const allInsertedText = requests
         .filter((r) => r.insertText)
@@ -389,19 +442,19 @@ More content.`;
       expect(h1Reqs).toHaveLength(1);
       expect(h2Reqs).toHaveLength(2);
 
-      // Bullet lists
+      // Bullet lists (merged into one range)
       const bulletReqs = requests.filter(
         (r) =>
           r.createParagraphBullets?.bulletPreset === 'BULLET_DISC_CIRCLE_SQUARE',
       );
-      expect(bulletReqs).toHaveLength(2);
+      expect(bulletReqs).toHaveLength(1);
 
-      // Numbered list
+      // Numbered list (merged into one range)
       const numberedReqs = requests.filter(
         (r) =>
           r.createParagraphBullets?.bulletPreset === 'NUMBERED_DECIMAL_ALPHA_ROMAN',
       );
-      expect(numberedReqs).toHaveLength(3);
+      expect(numberedReqs).toHaveLength(1);
 
       // Bold
       const boldReqs = requests.filter(
@@ -703,6 +756,125 @@ describe('Docs to Markdown Conversion', () => {
       const md = docsJsonToMarkdown(doc);
       expect(md).toContain('- Parent');
       expect(md).toContain('  - Child');
+    });
+
+    it('should render 3 levels of nested bullet indentation', () => {
+      const doc = {
+        body: {
+          content: [
+            {
+              paragraph: {
+                bullet: { listId: 'deep', nestingLevel: 0 },
+                elements: [{ textRun: { content: 'Level 0\n' } }],
+              },
+            },
+            {
+              paragraph: {
+                bullet: { listId: 'deep', nestingLevel: 1 },
+                elements: [{ textRun: { content: 'Level 1\n' } }],
+              },
+            },
+            {
+              paragraph: {
+                bullet: { listId: 'deep', nestingLevel: 2 },
+                elements: [{ textRun: { content: 'Level 2\n' } }],
+              },
+            },
+          ],
+        },
+        lists: {
+          deep: {
+            listProperties: {
+              nestingLevels: [
+                { glyphSymbol: '\u25cf' },
+                { glyphSymbol: '\u25cb' },
+                { glyphSymbol: '\u25a0' },
+              ],
+            },
+          },
+        },
+      };
+      const md = docsJsonToMarkdown(doc);
+      expect(md).toContain('- Level 0');
+      expect(md).toContain('  - Level 1');
+      expect(md).toContain('    - Level 2');
+    });
+
+    it('should render ordered sub-list inside bullet list', () => {
+      const doc = {
+        body: {
+          content: [
+            {
+              paragraph: {
+                bullet: { listId: 'mixed', nestingLevel: 0 },
+                elements: [{ textRun: { content: 'Bullet parent\n' } }],
+              },
+            },
+            {
+              paragraph: {
+                bullet: { listId: 'mixed', nestingLevel: 1 },
+                elements: [{ textRun: { content: 'Ordered child\n' } }],
+              },
+            },
+          ],
+        },
+        lists: {
+          mixed: {
+            listProperties: {
+              nestingLevels: [
+                { glyphSymbol: '\u25cf' },
+                { glyphType: 'DECIMAL' },
+              ],
+            },
+          },
+        },
+      };
+      const md = docsJsonToMarkdown(doc);
+      expect(md).toContain('- Bullet parent');
+      expect(md).toContain('  1. Ordered child');
+    });
+
+    it('should return to parent indentation level after nested items', () => {
+      const doc = {
+        body: {
+          content: [
+            {
+              paragraph: {
+                bullet: { listId: 'bounce', nestingLevel: 0 },
+                elements: [{ textRun: { content: 'First\n' } }],
+              },
+            },
+            {
+              paragraph: {
+                bullet: { listId: 'bounce', nestingLevel: 1 },
+                elements: [{ textRun: { content: 'Nested\n' } }],
+              },
+            },
+            {
+              paragraph: {
+                bullet: { listId: 'bounce', nestingLevel: 0 },
+                elements: [{ textRun: { content: 'Back to top\n' } }],
+              },
+            },
+          ],
+        },
+        lists: {
+          bounce: {
+            listProperties: {
+              nestingLevels: [{ glyphSymbol: '\u25cf' }, { glyphSymbol: '\u25cb' }],
+            },
+          },
+        },
+      };
+      const md = docsJsonToMarkdown(doc);
+      const lines = md.split('\n').filter((l) => l.trim());
+      const firstLine = lines.find((l) => l.includes('First'));
+      const nestedLine = lines.find((l) => l.includes('Nested'));
+      const backLine = lines.find((l) => l.includes('Back to top'));
+
+      expect(firstLine).toBe('- First');
+      expect(nestedLine).toBe('  - Nested');
+      expect(backLine).toBe('- Back to top');
     });
   });
 
