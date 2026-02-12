@@ -38,7 +38,18 @@ export function register(server: FastMCP) {
             fileId: args.fileId,
             supportsAllDrives: true,
           });
-          return `Permanently deleted ${isFolder ? 'folder' : 'file'} "${fileName}".`;
+          return JSON.stringify(
+            {
+              success: true,
+              action: 'permanently_deleted',
+              fileId: args.fileId,
+              fileName,
+              type: isFolder ? 'folder' : 'file',
+              message: `Permanently deleted ${isFolder ? 'folder' : 'file'} "${fileName}".`,
+            },
+            null,
+            2
+          );
         } else {
           await drive.files.update({
             fileId: args.fileId,
@@ -47,7 +58,18 @@ export function register(server: FastMCP) {
             },
             supportsAllDrives: true,
           });
-          return `Moved ${isFolder ? 'folder' : 'file'} "${fileName}" to trash. It can be restored from the trash.`;
+          return JSON.stringify(
+            {
+              success: true,
+              action: 'trashed',
+              fileId: args.fileId,
+              fileName,
+              type: isFolder ? 'folder' : 'file',
+              message: `Moved ${isFolder ? 'folder' : 'file'} "${fileName}" to trash. It can be restored from the trash.`,
+            },
+            null,
+            2
+          );
         }
       } catch (error: any) {
         log.error(`Error deleting file: ${error.message || error}`);

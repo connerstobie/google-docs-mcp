@@ -3,6 +3,7 @@ import { UserError } from 'fastmcp';
 import { z } from 'zod';
 import { drive_v3 } from 'googleapis';
 import { getDriveClient, getDocsClient } from '../../clients.js';
+import { insertMarkdown, formatInsertResult } from '../../markdown-transformer/index.js';
 
 export function register(server: FastMCP) {
   server.addTool({
@@ -20,7 +21,16 @@ export function register(server: FastMCP) {
       initialContent: z
         .string()
         .optional()
-        .describe('Initial text content to add to the document.'),
+        .describe(
+          'Initial content to add to the document. By default, markdown syntax is converted to formatted Google Docs content (headings, bold, italic, links, lists, etc.).'
+        ),
+      contentFormat: z
+        .enum(['markdown', 'raw'])
+        .optional()
+        .default('markdown')
+        .describe(
+          "How to interpret initialContent. 'markdown' (default) converts markdown to formatted Google Docs content. 'raw' inserts the text as-is without any conversion."
+        ),
     }),
     execute: async (args, { log }) => {
       const drive = await getDriveClient();
@@ -48,19 +58,27 @@ export function register(server: FastMCP) {
         if (args.initialContent) {
           try {
             const docs = await getDocsClient();
-            await docs.documents.batchUpdate({
-              documentId: document.id!,
-              requestBody: {
-                requests: [
-                  {
-                    insertText: {
-                      location: { index: 1 },
-                      text: args.initialContent,
+            if (args.contentFormat === 'raw') {
+              await docs.documents.batchUpdate({
+                documentId: document.id!,
+                requestBody: {
+                  requests: [
+                    {
+                      insertText: {
+                        location: { index: 1 },
+                        text: args.initialContent,
+                      },
                     },
-                  },
-                ],
-              },
-            });
+                  ],
+                },
+              });
+            } else {
+              const result = await insertMarkdown(docs, document.id!, args.initialContent, {
+                startIndex: 1,
+                firstHeadingAsTitle: true,
+              });
+              log.info(formatInsertResult(result));
+            }
           } catch (contentError: any) {
             log.warn(`Document created but failed to add initial content: ${contentError.message}`);
           }
