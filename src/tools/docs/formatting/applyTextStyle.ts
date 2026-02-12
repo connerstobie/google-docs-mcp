@@ -19,7 +19,7 @@ export function register(server: FastMCP) {
       let { startIndex, endIndex } = args.target as any; // Will be updated if target is text
 
       log.info(
-        `Applying text style in doc ${args.documentId}. Target: ${JSON.stringify(args.target)}, Style: ${JSON.stringify(args.style)}`
+        `Applying text style in doc ${args.documentId}${args.tabId ? ` (tab: ${args.tabId})` : ''}. Target: ${JSON.stringify(args.target)}, Style: ${JSON.stringify(args.style)}`
       );
 
       try {
@@ -29,11 +29,12 @@ export function register(server: FastMCP) {
             docs,
             args.documentId,
             args.target.textToFind,
-            args.target.matchInstance
+            args.target.matchInstance,
+            args.tabId
           );
           if (!range) {
             throw new UserError(
-              `Could not find instance ${args.target.matchInstance} of text "${args.target.textToFind}".`
+              `Could not find instance ${args.target.matchInstance} of text "${args.target.textToFind}"${args.tabId ? ` in tab ${args.tabId}` : ''}.`
             );
           }
           startIndex = range.startIndex;
@@ -54,14 +55,15 @@ export function register(server: FastMCP) {
         const requestInfo = GDocsHelpers.buildUpdateTextStyleRequest(
           startIndex,
           endIndex,
-          args.style
+          args.style,
+          args.tabId
         );
         if (!requestInfo) {
           return 'No valid text styling options were provided.';
         }
 
         await GDocsHelpers.executeBatchUpdate(docs, args.documentId, [requestInfo.request]);
-        return `Successfully applied text style (${requestInfo.fields.join(', ')}) to range ${startIndex}-${endIndex}.`;
+        return `Successfully applied text style (${requestInfo.fields.join(', ')}) to range ${startIndex}-${endIndex}${args.tabId ? ` in tab ${args.tabId}` : ''}.`;
       } catch (error: any) {
         log.error(`Error applying text style in doc ${args.documentId}: ${error.message || error}`);
         if (error instanceof UserError) throw error;

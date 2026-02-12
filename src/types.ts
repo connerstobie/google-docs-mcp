@@ -165,6 +165,12 @@ export const ApplyTextStyleToolParameters = DocumentIdParameter.extend({
     (styleArgs) => Object.values(styleArgs).some((v) => v !== undefined),
     { message: 'At least one text style option must be provided.' }
   ).describe('The text styling to apply.'),
+  tabId: z
+    .string()
+    .optional()
+    .describe(
+      'The ID of the specific tab to apply formatting in. Use listDocumentTabs to get tab IDs. If not specified, operates on the first tab.'
+    ),
 });
 export type ApplyTextStyleToolArgs = z.infer<typeof ApplyTextStyleToolParameters>;
 
@@ -190,6 +196,12 @@ export const ApplyParagraphStyleToolParameters = DocumentIdParameter.extend({
     (styleArgs) => Object.values(styleArgs).some((v) => v !== undefined),
     { message: 'At least one paragraph style option must be provided.' }
   ).describe('The paragraph styling to apply.'),
+  tabId: z
+    .string()
+    .optional()
+    .describe(
+      'The ID of the specific tab to apply formatting in. Use listDocumentTabs to get tab IDs. If not specified, operates on the first tab.'
+    ),
 });
 export type ApplyParagraphStyleToolArgs = z.infer<typeof ApplyParagraphStyleToolParameters>;
 

@@ -31,6 +31,12 @@ export function register(server: FastMCP) {
         ),
       width: z.number().min(1).optional().describe('Width of the image in points.'),
       height: z.number().min(1).optional().describe('Height of the image in points.'),
+      tabId: z
+        .string()
+        .optional()
+        .describe(
+          'The ID of the specific tab to insert into. Use listDocumentTabs to get tab IDs. If not specified, inserts into the first tab.'
+        ),
     })
       .refine((data) => data.imageUrl || data.localImagePath, {
         message: 'Either imageUrl or localImagePath must be provided.',
@@ -42,12 +48,30 @@ export function register(server: FastMCP) {
       const docs = await getDocsClient();
 
       try {
+        // If tabId is specified, verify the tab exists
+        if (args.tabId) {
+          const docInfo = await docs.documents.get({
+            documentId: args.documentId,
+            includeTabsContent: true,
+            fields: 'tabs(tabProperties,documentTab)',
+          });
+          const targetTab = GDocsHelpers.findTabById(docInfo.data, args.tabId);
+          if (!targetTab) {
+            throw new UserError(`Tab with ID "${args.tabId}" not found in document.`);
+          }
+          if (!targetTab.documentTab) {
+            throw new UserError(
+              `Tab "${args.tabId}" does not have content (may not be a document tab).`
+            );
+          }
+        }
+
         let resolvedUrl: string;
 
         if (args.localImagePath) {
           const drive = await getDriveClient();
           log.info(
-            `Uploading local image ${args.localImagePath} and inserting at index ${args.index} in doc ${args.documentId}`
+            `Uploading local image ${args.localImagePath} and inserting at index ${args.index} in doc ${args.documentId}${args.tabId ? ` (tab: ${args.tabId})` : ''}`
           );
 
           // Get the document's parent folder
@@ -76,7 +100,7 @@ export function register(server: FastMCP) {
         } else {
           resolvedUrl = args.imageUrl!;
           log.info(
-            `Inserting image from URL ${resolvedUrl} at index ${args.index} in doc ${args.documentId}`
+            `Inserting image from URL ${resolvedUrl} at index ${args.index} in doc ${args.documentId}${args.tabId ? ` (tab: ${args.tabId})` : ''}`
           );
         }
 
@@ -86,7 +110,8 @@ export function register(server: FastMCP) {
           resolvedUrl,
           args.index,
           args.width,
-          args.height
+          args.height,
+          args.tabId
         );
 
         let sizeInfo = '';
@@ -94,7 +119,7 @@ export function register(server: FastMCP) {
           sizeInfo = ` with size ${args.width}x${args.height}pt`;
         }
 
-        return `Successfully inserted image at index ${args.index}${sizeInfo}.`;
+        return `Successfully inserted image at index ${args.index}${sizeInfo}${args.tabId ? ` in tab ${args.tabId}` : ''}.`;
       } catch (error: any) {
         log.error(`Error inserting image in doc ${args.documentId}: ${error.message || error}`);
         if (error instanceof UserError) throw error;

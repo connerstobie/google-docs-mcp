@@ -227,19 +227,39 @@ export async function findTextRange(
   docs: Docs,
   documentId: string,
   textToFind: string,
-  instance: number = 1
+  instance: number = 1,
+  tabId?: string
 ): Promise<{ startIndex: number; endIndex: number } | null> {
   try {
     // Request more detailed information about the document structure
+    // When tabId is specified, we need to use includeTabsContent to access tab-specific content
+    const needsTabsContent = !!tabId;
     const res = await docs.documents.get({
       documentId,
+      ...(needsTabsContent && { includeTabsContent: true }),
       // Request more fields to handle various container types (not just paragraphs)
-      fields:
-        'body(content(paragraph(elements(startIndex,endIndex,textRun(content))),table,sectionBreak,tableOfContents,startIndex,endIndex))',
+      fields: needsTabsContent
+        ? 'tabs(tabProperties(tabId),documentTab(body(content(paragraph(elements(startIndex,endIndex,textRun(content))),table,sectionBreak,tableOfContents,startIndex,endIndex))))'
+        : 'body(content(paragraph(elements(startIndex,endIndex,textRun(content))),table,sectionBreak,tableOfContents,startIndex,endIndex))',
     });
 
-    if (!res.data.body?.content) {
-      logger.warn(`No content found in document ${documentId}`);
+    // Get body content from the correct tab or default
+    let bodyContent: any[] | undefined;
+    if (tabId) {
+      const targetTab = findTabById(res.data, tabId);
+      if (!targetTab) {
+        throw new UserError(`Tab with ID "${tabId}" not found in document.`);
+      }
+      if (!targetTab.documentTab?.body?.content) {
+        throw new UserError(`Tab "${tabId}" does not have content (may not be a document tab).`);
+      }
+      bodyContent = targetTab.documentTab.body.content;
+    } else {
+      bodyContent = res.data.body?.content;
+    }
+
+    if (!bodyContent) {
+      logger.warn(`No content found in document ${documentId}${tabId ? ` (tab: ${tabId})` : ''}`);
       return null;
     }
 
@@ -282,7 +302,7 @@ export async function findTextRange(
       });
     };
 
-    collectTextFromContent(res.data.body.content);
+    collectTextFromContent(bodyContent);
 
     // Sort segments by starting position to ensure correct ordering
     segments.sort((a, b) => a.start - b.start);
@@ -384,20 +404,43 @@ export async function findTextRange(
 export async function getParagraphRange(
   docs: Docs,
   documentId: string,
-  indexWithin: number
+  indexWithin: number,
+  tabId?: string
 ): Promise<{ startIndex: number; endIndex: number } | null> {
   try {
-    logger.debug(`Finding paragraph containing index ${indexWithin} in document ${documentId}`);
+    logger.debug(
+      `Finding paragraph containing index ${indexWithin} in document ${documentId}${tabId ? ` (tab: ${tabId})` : ''}`
+    );
 
+    // When tabId is specified, we need to use includeTabsContent to access tab-specific content
+    const needsTabsContent = !!tabId;
     // Request more detailed document structure to handle nested elements
     const res = await docs.documents.get({
       documentId,
+      ...(needsTabsContent && { includeTabsContent: true }),
       // Request more comprehensive structure information
-      fields: 'body(content(startIndex,endIndex,paragraph,table,sectionBreak,tableOfContents))',
+      fields: needsTabsContent
+        ? 'tabs(tabProperties(tabId),documentTab(body(content(startIndex,endIndex,paragraph,table,sectionBreak,tableOfContents))))'
+        : 'body(content(startIndex,endIndex,paragraph,table,sectionBreak,tableOfContents))',
     });
 
-    if (!res.data.body?.content) {
-      logger.warn(`No content found in document ${documentId}`);
+    // Get body content from the correct tab or default
+    let bodyContent: any[] | undefined;
+    if (tabId) {
+      const targetTab = findTabById(res.data, tabId);
+      if (!targetTab) {
+        throw new UserError(`Tab with ID "${tabId}" not found in document.`);
+      }
+      if (!targetTab.documentTab?.body?.content) {
+        throw new UserError(`Tab "${tabId}" does not have content (may not be a document tab).`);
+      }
+      bodyContent = targetTab.documentTab.body.content;
+    } else {
+      bodyContent = res.data.body?.content;
+    }
+
+    if (!bodyContent) {
+      logger.warn(`No content found in document ${documentId}${tabId ? ` (tab: ${tabId})` : ''}`);
       return null;
     }
 
@@ -448,7 +491,7 @@ export async function getParagraphRange(
       return null;
     };
 
-    const paragraphRange = findParagraphInContent(res.data.body.content);
+    const paragraphRange = findParagraphInContent(bodyContent);
 
     if (!paragraphRange) {
       logger.warn(`Could not find paragraph containing index ${indexWithin}`);
@@ -637,14 +680,19 @@ export async function createTable(
   documentId: string,
   rows: number,
   columns: number,
-  index: number
+  index: number,
+  tabId?: string
 ): Promise<docs_v1.Schema$BatchUpdateDocumentResponse> {
   if (rows < 1 || columns < 1) {
     throw new UserError('Table must have at least 1 row and 1 column.');
   }
+  const location: any = { index };
+  if (tabId) {
+    location.tabId = tabId;
+  }
   const request: docs_v1.Schema$Request = {
     insertTable: {
-      location: { index },
+      location,
       rows: rows,
       columns: columns,
     },
@@ -840,7 +888,8 @@ export async function insertInlineImage(
   imageUrl: string,
   index: number,
   width?: number,
-  height?: number
+  height?: number,
+  tabId?: string
 ): Promise<docs_v1.Schema$BatchUpdateDocumentResponse> {
   // Validate URL format
   try {
@@ -850,9 +899,14 @@ export async function insertInlineImage(
   }
 
   // Build the insertInlineImage request
+  const location: any = { index };
+  if (tabId) {
+    location.tabId = tabId;
+  }
+
   const request: docs_v1.Schema$Request = {
     insertInlineImage: {
-      location: { index },
+      location,
       uri: imageUrl,
       ...(width &&
         height && {
