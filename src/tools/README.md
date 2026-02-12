@@ -14,18 +14,19 @@ tools/
 ```
 
 Each domain folder contains:
+
 - **`index.ts`** — A router that registers all tools in the domain
 - **`README.md`** — Documentation of the domain and its tools
 - **Individual tool files** — One file per tool, each exporting a `register(server)` function
 
 ## Domains
 
-| Domain | Tools | Description |
-|--------|------:|-------------|
-| [docs](./docs/) | 21 | Read, write, format, and comment on Google Documents |
-| [drive](./drive/) | 13 | Search, create, move, copy, rename, and delete files and folders |
-| [sheets](./sheets/) | 8 | Read, write, append, and manage spreadsheets |
-| [utils](./utils/) | 2 | Markdown conversion and other cross-cutting workflows |
+| Domain              | Tools | Description                                                      |
+| ------------------- | ----: | ---------------------------------------------------------------- |
+| [docs](./docs/)     |    21 | Read, write, format, and comment on Google Documents             |
+| [drive](./drive/)   |    13 | Search, create, move, copy, rename, and delete files and folders |
+| [sheets](./sheets/) |     8 | Read, write, append, and manage spreadsheets                     |
+| [utils](./utils/)   |     2 | Markdown conversion and other cross-cutting workflows            |
 
 ## Adding a New Tool
 

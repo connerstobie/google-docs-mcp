@@ -11,7 +11,9 @@ export function register(server: FastMCP) {
       'Writes data to a specific range in a Google Spreadsheet. Overwrites existing data in the range.',
     parameters: z.object({
       spreadsheetId: z.string().describe('The ID of the Google Spreadsheet (from the URL).'),
-      range: z.string().describe('A1 notation range to write to (e.g., "A1:B2" or "Sheet1!A1:B2").'),
+      range: z
+        .string()
+        .describe('A1 notation range to write to (e.g., "A1:B2" or "Sheet1!A1:B2").'),
       values: z
         .array(z.array(z.any()))
         .describe('2D array of values to write. Each inner array represents a row.'),

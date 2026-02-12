@@ -16,14 +16,8 @@ export function register(server: FastMCP) {
         .number()
         .int()
         .min(1)
-        .describe(
-          'The starting index of the text range (inclusive, starts from 1).'
-        ),
-      endIndex: z
-        .number()
-        .int()
-        .min(1)
-        .describe('The ending index of the text range (exclusive).'),
+        .describe('The starting index of the text range (inclusive, starts from 1).'),
+      endIndex: z.number().int().min(1).describe('The ending index of the text range (exclusive).'),
       tabId: z
         .string()
         .optional()
@@ -40,9 +34,7 @@ export function register(server: FastMCP) {
         `Deleting range ${args.startIndex}-${args.endIndex} in doc ${args.documentId}${args.tabId ? ` (tab: ${args.tabId})` : ''}`
       );
       if (args.endIndex <= args.startIndex) {
-        throw new UserError(
-          'End index must be greater than start index for deletion.'
-        );
+        throw new UserError('End index must be greater than start index for deletion.');
       }
       try {
         // If tabId is specified, verify the tab exists
@@ -54,9 +46,7 @@ export function register(server: FastMCP) {
           });
           const targetTab = GDocsHelpers.findTabById(docInfo.data, args.tabId);
           if (!targetTab) {
-            throw new UserError(
-              `Tab with ID "${args.tabId}" not found in document.`
-            );
+            throw new UserError(`Tab with ID "${args.tabId}" not found in document.`);
           }
           if (!targetTab.documentTab) {
             throw new UserError(
@@ -79,13 +69,9 @@ export function register(server: FastMCP) {
         await GDocsHelpers.executeBatchUpdate(docs, args.documentId, [request]);
         return `Successfully deleted content in range ${args.startIndex}-${args.endIndex}${args.tabId ? ` in tab ${args.tabId}` : ''}.`;
       } catch (error: any) {
-        log.error(
-          `Error deleting range in doc ${args.documentId}: ${error.message || error}`
-        );
+        log.error(`Error deleting range in doc ${args.documentId}: ${error.message || error}`);
         if (error instanceof UserError) throw error;
-        throw new UserError(
-          `Failed to delete range: ${error.message || 'Unknown error'}`
-        );
+        throw new UserError(`Failed to delete range: ${error.message || 'Unknown error'}`);
       }
     },
   });

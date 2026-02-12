@@ -333,9 +333,7 @@ More content.`;
     it('should produce a border-bottom paragraph style for ---', () => {
       const requests = convertMarkdownToRequests('Above\n\n---\n\nBelow', 1);
 
-      const hrReqs = requests.filter(
-        (r) => r.updateParagraphStyle?.paragraphStyle?.borderBottom
-      );
+      const hrReqs = requests.filter((r) => r.updateParagraphStyle?.paragraphStyle?.borderBottom);
       assert.strictEqual(hrReqs.length, 1, 'Should have exactly one HR border request');
 
       const border = hrReqs[0].updateParagraphStyle.paragraphStyle.borderBottom;
@@ -350,9 +348,7 @@ More content.`;
         1
       );
 
-      const hrReqs = requests.filter(
-        (r) => r.updateParagraphStyle?.paragraphStyle?.borderBottom
-      );
+      const hrReqs = requests.filter((r) => r.updateParagraphStyle?.paragraphStyle?.borderBottom);
       assert.strictEqual(hrReqs.length, 2, 'Should have two HR border requests');
     });
 
@@ -371,20 +367,14 @@ More content.`;
     it('should place the HR paragraph between surrounding content', () => {
       const requests = convertMarkdownToRequests('Above\n\n---\n\nBelow', 1);
 
-      const hrReqs = requests.filter(
-        (r) => r.updateParagraphStyle?.paragraphStyle?.borderBottom
-      );
+      const hrReqs = requests.filter((r) => r.updateParagraphStyle?.paragraphStyle?.borderBottom);
       assert.strictEqual(hrReqs.length, 1, 'Should have one HR request');
 
       const hrStart = hrReqs[0].updateParagraphStyle.range.startIndex;
       const hrEnd = hrReqs[0].updateParagraphStyle.range.endIndex;
 
-      const aboveInsert = requests.find(
-        (r) => r.insertText && r.insertText.text.includes('Above')
-      );
-      const belowInsert = requests.find(
-        (r) => r.insertText && r.insertText.text.includes('Below')
-      );
+      const aboveInsert = requests.find((r) => r.insertText && r.insertText.text.includes('Above'));
+      const belowInsert = requests.find((r) => r.insertText && r.insertText.text.includes('Below'));
 
       assert.ok(aboveInsert.insertText.location.index < hrStart, 'Above text should precede HR');
       assert.ok(belowInsert.insertText.location.index >= hrEnd, 'Below text should follow HR');
@@ -393,9 +383,7 @@ More content.`;
     it('should include tabId on HR border requests when provided', () => {
       const requests = convertMarkdownToRequests('---', 1, 'tab-abc');
 
-      const hrReqs = requests.filter(
-        (r) => r.updateParagraphStyle?.paragraphStyle?.borderBottom
-      );
+      const hrReqs = requests.filter((r) => r.updateParagraphStyle?.paragraphStyle?.borderBottom);
       assert.ok(hrReqs.length > 0, 'Should have HR border request');
       assert.strictEqual(
         hrReqs[0].updateParagraphStyle.range.tabId,
@@ -427,9 +415,7 @@ More content.`;
       const requests = convertMarkdownToRequests(markdown, 1);
 
       // HRs
-      const hrReqs = requests.filter(
-        (r) => r.updateParagraphStyle?.paragraphStyle?.borderBottom
-      );
+      const hrReqs = requests.filter((r) => r.updateParagraphStyle?.paragraphStyle?.borderBottom);
       assert.strictEqual(hrReqs.length, 2, 'Should have two HR borders');
 
       // Headings
@@ -444,28 +430,22 @@ More content.`;
 
       // Bullet lists
       const bulletReqs = requests.filter(
-        (r) =>
-          r.createParagraphBullets?.bulletPreset === 'BULLET_DISC_CIRCLE_SQUARE'
+        (r) => r.createParagraphBullets?.bulletPreset === 'BULLET_DISC_CIRCLE_SQUARE'
       );
       assert.strictEqual(bulletReqs.length, 2, 'Should have two bullet items');
 
       // Numbered list
       const numberedReqs = requests.filter(
-        (r) =>
-          r.createParagraphBullets?.bulletPreset === 'NUMBERED_DECIMAL_ALPHA_ROMAN'
+        (r) => r.createParagraphBullets?.bulletPreset === 'NUMBERED_DECIMAL_ALPHA_ROMAN'
       );
       assert.strictEqual(numberedReqs.length, 3, 'Should have three numbered items');
 
       // Bold
-      const boldReqs = requests.filter(
-        (r) => r.updateTextStyle?.textStyle?.bold === true
-      );
+      const boldReqs = requests.filter((r) => r.updateTextStyle?.textStyle?.bold === true);
       assert.ok(boldReqs.length >= 2, 'Should have at least two bold ranges');
 
       // Italic
-      const italicReqs = requests.filter(
-        (r) => r.updateTextStyle?.textStyle?.italic === true
-      );
+      const italicReqs = requests.filter((r) => r.updateTextStyle?.textStyle?.italic === true);
       assert.ok(italicReqs.length >= 1, 'Should have at least one italic range');
 
       // All text present

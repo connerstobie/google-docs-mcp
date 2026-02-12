@@ -38,7 +38,9 @@ export function register(server: FastMCP) {
 
         return result;
       } catch (error: any) {
-        log.error(`Error getting spreadsheet info ${args.spreadsheetId}: ${error.message || error}`);
+        log.error(
+          `Error getting spreadsheet info ${args.spreadsheetId}: ${error.message || error}`
+        );
         if (error instanceof UserError) throw error;
         throw new UserError(`Failed to get spreadsheet info: ${error.message || 'Unknown error'}`);
       }

@@ -9,8 +9,7 @@ import * as GDocsHelpers from '../../googleDocsApiHelpers.js';
 export function register(server: FastMCP) {
   server.addTool({
     name: 'insertText',
-    description:
-      'Inserts text at a specific index within the document body or a specific tab.',
+    description: 'Inserts text at a specific index within the document body or a specific tab.',
     parameters: DocumentIdParameter.extend({
       textToInsert: z.string().min(1).describe('The text to insert.'),
       index: z
@@ -40,9 +39,7 @@ export function register(server: FastMCP) {
           });
           const targetTab = GDocsHelpers.findTabById(docInfo.data, args.tabId);
           if (!targetTab) {
-            throw new UserError(
-              `Tab with ID "${args.tabId}" not found in document.`
-            );
+            throw new UserError(`Tab with ID "${args.tabId}" not found in document.`);
           }
           if (!targetTab.documentTab) {
             throw new UserError(
@@ -55,27 +52,16 @@ export function register(server: FastMCP) {
           const request: docs_v1.Schema$Request = {
             insertText: { location, text: args.textToInsert },
           };
-          await GDocsHelpers.executeBatchUpdate(docs, args.documentId, [
-            request,
-          ]);
+          await GDocsHelpers.executeBatchUpdate(docs, args.documentId, [request]);
         } else {
           // Use existing helper for backward compatibility
-          await GDocsHelpers.insertText(
-            docs,
-            args.documentId,
-            args.textToInsert,
-            args.index
-          );
+          await GDocsHelpers.insertText(docs, args.documentId, args.textToInsert, args.index);
         }
         return `Successfully inserted text at index ${args.index}${args.tabId ? ` in tab ${args.tabId}` : ''}.`;
       } catch (error: any) {
-        log.error(
-          `Error inserting text in doc ${args.documentId}: ${error.message || error}`
-        );
+        log.error(`Error inserting text in doc ${args.documentId}: ${error.message || error}`);
         if (error instanceof UserError) throw error;
-        throw new UserError(
-          `Failed to insert text: ${error.message || 'Unknown error'}`
-        );
+        throw new UserError(`Failed to insert text: ${error.message || 'Unknown error'}`);
       }
     },
   });

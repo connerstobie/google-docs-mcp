@@ -27,7 +27,9 @@ export function register(server: FastMCP) {
     }),
     execute: async (args, { log }) => {
       const drive = await getDriveClient();
-      log.info(`Getting recent Google Docs: ${args.maxResults} results, ${args.daysBack} days back`);
+      log.info(
+        `Getting recent Google Docs: ${args.maxResults} results, ${args.daysBack} days back`
+      );
 
       try {
         const cutoffDate = new Date();

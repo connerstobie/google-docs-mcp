@@ -45,7 +45,9 @@ export function register(server: FastMCP) {
 
         return `Successfully appended ${updatedRows} row(s) (${updatedCells} cells) to spreadsheet. Updated range: ${updatedRange}`;
       } catch (error: any) {
-        log.error(`Error appending to spreadsheet ${args.spreadsheetId}: ${error.message || error}`);
+        log.error(
+          `Error appending to spreadsheet ${args.spreadsheetId}: ${error.message || error}`
+        );
         if (error instanceof UserError) throw error;
         throw new UserError(`Failed to append to spreadsheet: ${error.message || 'Unknown error'}`);
       }

@@ -15,9 +15,7 @@ export function register(server: FastMCP) {
         .boolean()
         .optional()
         .default(false)
-        .describe(
-          'Whether to include a content summary for each tab (character count).'
-        ),
+        .describe('Whether to include a content summary for each tab (character count).'),
     }),
     execute: async (args, { log }) => {
       const docs = await getDocsClient();
@@ -83,9 +81,7 @@ export function register(server: FastMCP) {
           if (args.includeContent && tab.documentTab) {
             const textLength = GDocsHelpers.getTabTextLength(tab.documentTab);
             const contentInfo =
-              textLength > 0
-                ? `${textLength.toLocaleString()} characters`
-                : 'Empty';
+              textLength > 0 ? `${textLength.toLocaleString()} characters` : 'Empty';
             result += `${indent}   - Content: ${contentInfo}\n`;
           }
 
@@ -101,20 +97,11 @@ export function register(server: FastMCP) {
 
         return result;
       } catch (error: any) {
-        log.error(
-          `Error listing tabs for doc ${args.documentId}: ${error.message || error}`
-        );
-        if (error.code === 404)
-          throw new UserError(
-            `Document not found (ID: ${args.documentId}).`
-          );
+        log.error(`Error listing tabs for doc ${args.documentId}: ${error.message || error}`);
+        if (error.code === 404) throw new UserError(`Document not found (ID: ${args.documentId}).`);
         if (error.code === 403)
-          throw new UserError(
-            `Permission denied for document (ID: ${args.documentId}).`
-          );
-        throw new UserError(
-          `Failed to list tabs: ${error.message || 'Unknown error'}`
-        );
+          throw new UserError(`Permission denied for document (ID: ${args.documentId}).`);
+        throw new UserError(`Failed to list tabs: ${error.message || 'Unknown error'}`);
       }
     },
   });

@@ -69,7 +69,9 @@ export function register(server: FastMCP) {
         const folders = items.filter(
           (item) => item.mimeType === 'application/vnd.google-apps.folder'
         );
-        const files = items.filter((item) => item.mimeType !== 'application/vnd.google-apps.folder');
+        const files = items.filter(
+          (item) => item.mimeType !== 'application/vnd.google-apps.folder'
+        );
 
         // List folders first
         if (folders.length > 0 && args.includeSubfolders) {

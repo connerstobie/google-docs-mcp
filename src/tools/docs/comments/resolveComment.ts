@@ -52,7 +52,8 @@ export function register(server: FastMCP) {
         }
       } catch (error: any) {
         log.error(`Error resolving comment: ${error.message || error}`);
-        const errorDetails = error.response?.data?.error?.message || error.message || 'Unknown error';
+        const errorDetails =
+          error.response?.data?.error?.message || error.message || 'Unknown error';
         const errorCode = error.response?.data?.error?.code;
         throw new UserError(
           `Failed to resolve comment: ${errorDetails}${errorCode ? ` (Code: ${errorCode})` : ''}`

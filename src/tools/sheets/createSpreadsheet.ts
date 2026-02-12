@@ -73,7 +73,8 @@ export function register(server: FastMCP) {
         return result;
       } catch (error: any) {
         log.error(`Error creating spreadsheet: ${error.message || error}`);
-        if (error.code === 404) throw new UserError('Parent folder not found. Check the folder ID.');
+        if (error.code === 404)
+          throw new UserError('Parent folder not found. Check the folder ID.');
         if (error.code === 403)
           throw new UserError(
             'Permission denied. Make sure you have write access to the destination folder.'

@@ -16,7 +16,10 @@ export function register(server: FastMCP) {
         .describe(
           'ID of folder where document should be created. If not provided, creates in Drive root.'
         ),
-      initialContent: z.string().optional().describe('Initial text content to add to the document.'),
+      initialContent: z
+        .string()
+        .optional()
+        .describe('Initial text content to add to the document.'),
     }),
     execute: async (args, { log }) => {
       const drive = await getDriveClient();
@@ -68,7 +71,8 @@ export function register(server: FastMCP) {
         return result;
       } catch (error: any) {
         log.error(`Error creating document: ${error.message || error}`);
-        if (error.code === 404) throw new UserError('Parent folder not found. Check the folder ID.');
+        if (error.code === 404)
+          throw new UserError('Parent folder not found. Check the folder ID.');
         if (error.code === 403)
           throw new UserError(
             'Permission denied. Make sure you have write access to the destination folder.'

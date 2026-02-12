@@ -95,10 +95,7 @@ export function register(server: FastMCP) {
         }
 
         if (args.paragraphStyle && newTextEnd >= newTextStart) {
-          const paraEnd =
-            args.textContent !== undefined
-              ? newTextEnd + 1
-              : cellRange.endIndex + 1;
+          const paraEnd = args.textContent !== undefined ? newTextEnd + 1 : cellRange.endIndex + 1;
           const paraResult = GDocsHelpers.buildUpdateParagraphStyleRequest(
             newTextStart,
             paraEnd,
@@ -114,12 +111,7 @@ export function register(server: FastMCP) {
           return `No changes specified for cell (${args.rowIndex}, ${args.columnIndex}). Provide textContent, textStyle, or paragraphStyle.`;
         }
 
-        await GDocsHelpers.executeBatchUpdateWithSplitting(
-          docs,
-          args.documentId,
-          requests,
-          log
-        );
+        await GDocsHelpers.executeBatchUpdateWithSplitting(docs, args.documentId, requests, log);
 
         const actions: string[] = [];
         if (args.textContent !== undefined) actions.push(`text set to "${args.textContent}"`);

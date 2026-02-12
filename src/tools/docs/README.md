@@ -16,41 +16,41 @@ docs/
 
 ## Core Read/Write
 
-| Tool | Description |
-|------|-------------|
-| `readGoogleDoc` | Reads the content of a Google Document, optionally returning structured data |
-| `listDocumentTabs` | Lists all tabs in a Google Document, including hierarchy, IDs, and structure |
-| `appendToGoogleDoc` | Appends text to the end of a Google Document or tab |
-| `insertText` | Inserts text at a specific index within the document body or a specific tab |
-| `deleteRange` | Deletes content within a specified range from the document or a specific tab |
+| Tool                | Description                                                                  |
+| ------------------- | ---------------------------------------------------------------------------- |
+| `readGoogleDoc`     | Reads the content of a Google Document, optionally returning structured data |
+| `listDocumentTabs`  | Lists all tabs in a Google Document, including hierarchy, IDs, and structure |
+| `appendToGoogleDoc` | Appends text to the end of a Google Document or tab                          |
+| `insertText`        | Inserts text at a specific index within the document body or a specific tab  |
+| `deleteRange`       | Deletes content within a specified range from the document or a specific tab |
 
 ## Structure
 
-| Tool | Description |
-|------|-------------|
-| `insertTable` | Inserts a new table with specified dimensions at a given index |
-| `editTableCell` | Edits the content and/or style of a specific table cell (not yet implemented) |
-| `insertPageBreak` | Inserts a page break at the specified index |
-| `insertImageFromUrl` | Inserts an inline image from a publicly accessible URL |
-| `insertLocalImage` | Uploads a local image to Drive and inserts it into the document |
-| `fixListFormatting` | Experimental: detects and converts text that looks like lists into proper formatted lists |
-| `findElement` | Finds elements based on various criteria (not yet implemented) |
+| Tool                 | Description                                                                               |
+| -------------------- | ----------------------------------------------------------------------------------------- |
+| `insertTable`        | Inserts a new table with specified dimensions at a given index                            |
+| `editTableCell`      | Edits the content and/or style of a specific table cell (not yet implemented)             |
+| `insertPageBreak`    | Inserts a page break at the specified index                                               |
+| `insertImageFromUrl` | Inserts an inline image from a publicly accessible URL                                    |
+| `insertLocalImage`   | Uploads a local image to Drive and inserts it into the document                           |
+| `fixListFormatting`  | Experimental: detects and converts text that looks like lists into proper formatted lists |
+| `findElement`        | Finds elements based on various criteria (not yet implemented)                            |
 
 ## [Formatting](./formatting/)
 
-| Tool | Description |
-|------|-------------|
-| `applyTextStyle` | Applies character-level formatting (bold, color, font, etc.) to a range or found text |
-| `applyParagraphStyle` | Applies paragraph-level formatting (alignment, spacing, named styles) |
-| `formatMatchingText` | Finds specific text and applies character formatting to the matched instance |
+| Tool                  | Description                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------- |
+| `applyTextStyle`      | Applies character-level formatting (bold, color, font, etc.) to a range or found text |
+| `applyParagraphStyle` | Applies paragraph-level formatting (alignment, spacing, named styles)                 |
+| `formatMatchingText`  | Finds specific text and applies character formatting to the matched instance          |
 
 ## [Comments](./comments/)
 
-| Tool | Description |
-|------|-------------|
-| `listComments` | Lists all comments in a Google Document |
-| `getComment` | Gets a specific comment with its full thread of replies |
-| `addComment` | Adds a comment anchored to a specific text range |
-| `replyToComment` | Adds a reply to an existing comment |
-| `resolveComment` | Marks a comment as resolved |
-| `deleteComment` | Deletes a comment from the document |
+| Tool             | Description                                             |
+| ---------------- | ------------------------------------------------------- |
+| `listComments`   | Lists all comments in a Google Document                 |
+| `getComment`     | Gets a specific comment with its full thread of replies |
+| `addComment`     | Adds a comment anchored to a specific text range        |
+| `replyToComment` | Adds a reply to an existing comment                     |
+| `resolveComment` | Marks a comment as resolved                             |
+| `deleteComment`  | Deletes a comment from the document                     |

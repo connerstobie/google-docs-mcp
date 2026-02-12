@@ -15,9 +15,7 @@ export function register(server: FastMCP) {
     }),
     execute: async (args, { log }) => {
       log.warn('findElement tool called but is not implemented.');
-      throw new NotImplementedError(
-        'Finding elements by complex criteria is not yet implemented.'
-      );
+      throw new NotImplementedError('Finding elements by complex criteria is not yet implemented.');
     },
   });
 }
