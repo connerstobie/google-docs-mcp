@@ -13,10 +13,12 @@
 import { docs_v1 } from 'googleapis';
 import { docsJsonToMarkdown } from './docsToMarkdown.js';
 import { convertMarkdownToRequests } from './markdownToDocs.js';
+import type { ConversionOptions } from './markdownToDocs.js';
 import { executeBatchUpdateWithSplitting, findTabById } from '../googleDocsApiHelpers.js';
 import type { BatchUpdateMetadata } from '../googleDocsApiHelpers.js';
 
 export { docsJsonToMarkdown } from './docsToMarkdown.js';
+export type { ConversionOptions } from './markdownToDocs.js';
 
 // --- Types ---
 
@@ -30,6 +32,8 @@ interface InsertOptions {
   startIndex?: number;
   /** Target a specific tab by ID. */
   tabId?: string;
+  /** Treat the first H1 (`# ...`) as a Google Docs TITLE instead of HEADING_1. */
+  firstHeadingAsTitle?: boolean;
 }
 
 /** Debug metadata returned by insertMarkdown(). */
@@ -134,7 +138,10 @@ export async function insertMarkdown(
   const tabId = options?.tabId;
 
   const parseStart = performance.now();
-  const requests = convertMarkdownToRequests(markdown, startIndex, tabId);
+  const conversionOptions: ConversionOptions | undefined = options?.firstHeadingAsTitle
+    ? { firstHeadingAsTitle: true }
+    : undefined;
+  const requests = convertMarkdownToRequests(markdown, startIndex, tabId, conversionOptions);
   const parseElapsedMs = Math.round(performance.now() - parseStart);
 
   // Count requests by type

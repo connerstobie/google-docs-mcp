@@ -67,6 +67,11 @@ interface PendingListItem {
   taskPrefixProcessed: boolean;
 }
 
+export interface ConversionOptions {
+  /** Treat the first H1 (`# ...`) as a Google Docs TITLE instead of HEADING_1. Default false. */
+  firstHeadingAsTitle?: boolean;
+}
+
 interface ConversionContext {
   currentIndex: number;
   insertRequests: docs_v1.Schema$Request[];
@@ -81,6 +86,9 @@ interface ConversionContext {
   tabId?: string;
   currentParagraphStart?: number;
   currentHeadingLevel?: number;
+  /** When firstHeadingAsTitle is on, tracks whether the title H1 has been consumed. */
+  titleConsumed: boolean;
+  firstHeadingAsTitle: boolean;
 }
 
 const CODE_FONT_FAMILY = 'Roboto Mono';
@@ -98,12 +106,14 @@ const CODE_BACKGROUND_HEX = '#F1F3F4';
  * @param markdown - The markdown content to convert
  * @param startIndex - The document index where content should be inserted (1-based)
  * @param tabId - Optional tab ID for multi-tab documents
+ * @param options - Optional conversion options (e.g. firstHeadingAsTitle)
  * @returns Array of Google Docs API requests (insertions first, then formatting)
  */
 export function convertMarkdownToRequests(
   markdown: string,
   startIndex: number = 1,
   tabId?: string,
+  options?: ConversionOptions,
 ): docs_v1.Schema$Request[] {
   if (!markdown || markdown.trim().length === 0) {
     return [];
@@ -124,6 +134,8 @@ export function convertMarkdownToRequests(
     openListItemStack: [],
     hrRanges: [],
     tabId,
+    titleConsumed: false,
+    firstHeadingAsTitle: options?.firstHeadingAsTitle ?? false,
   };
 
   try {
@@ -289,10 +301,20 @@ function handleHeadingOpen(token: Token, context: ConversionContext): void {
 
 function handleHeadingClose(context: ConversionContext): void {
   if (context.currentHeadingLevel && context.currentParagraphStart !== undefined) {
+    // When firstHeadingAsTitle is enabled, the very first H1 becomes a TITLE.
+    const useTitle =
+      context.firstHeadingAsTitle &&
+      !context.titleConsumed &&
+      context.currentHeadingLevel === 1;
+
+    if (useTitle) {
+      context.titleConsumed = true;
+    }
+
     context.paragraphRanges.push({
       startIndex: context.currentParagraphStart,
       endIndex: context.currentIndex,
-      namedStyleType: `HEADING_${context.currentHeadingLevel}`,
+      namedStyleType: useTitle ? 'TITLE' : `HEADING_${context.currentHeadingLevel}`,
     });
 
     insertText('\n', context);
@@ -323,9 +345,7 @@ function handleParagraphOpen(context: ConversionContext): void {
 }
 
 function handleParagraphClose(context: ConversionContext): void {
-  if (context.listStack.length === 0) {
-    insertText('\n\n', context);
-  } else if (!lastInsertEndsWithNewline(context)) {
+  if (!lastInsertEndsWithNewline(context)) {
     insertText('\n', context);
   }
 
@@ -586,8 +606,12 @@ function finalizeFormatting(context: ConversionContext): void {
     });
   }
 
-  // List formatting: merge contiguous items of the same bullet type into single
+  // List formatting: merge *adjacent* items of the same bullet type into single
   // ranges so Google Docs treats them as one list (with sequential numbering).
+  // Items are only merged when they're truly adjacent (gap of at most 1 char
+  // for the newline between them). Separate lists with paragraphs, headings, or
+  // other content between them must NOT be merged, otherwise
+  // createParagraphBullets would turn all intervening content into bullets.
   const validListItems = context.pendingListItems
     .filter((item) => item.endIndex !== undefined && item.endIndex > item.startIndex)
     .sort((a, b) => a.startIndex - b.startIndex);
@@ -595,7 +619,11 @@ function finalizeFormatting(context: ConversionContext): void {
   const mergedListRanges: { startIndex: number; endIndex: number; bulletPreset: string }[] = [];
   for (const item of validListItems) {
     const last = mergedListRanges[mergedListRanges.length - 1];
-    if (last && last.bulletPreset === item.bulletPreset) {
+    if (
+      last &&
+      last.bulletPreset === item.bulletPreset &&
+      item.startIndex <= last.endIndex + 1
+    ) {
       last.endIndex = Math.max(last.endIndex, item.endIndex!);
     } else {
       mergedListRanges.push({

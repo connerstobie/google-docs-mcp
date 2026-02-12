@@ -101,6 +101,104 @@ describe('Markdown to Docs Conversion', () => {
     });
   });
 
+  describe('firstHeadingAsTitle option', () => {
+    it('should style the first H1 as TITLE when enabled', () => {
+      const requests = convertMarkdownToRequests('# My Document Title\n\nSome body text.', 1, undefined, {
+        firstHeadingAsTitle: true,
+      });
+
+      const paraReqs = requests.filter((r) => r.updateParagraphStyle);
+      const titleReq = paraReqs.find(
+        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'TITLE',
+      );
+      expect(titleReq).toBeDefined();
+
+      // Should NOT have a HEADING_1
+      const h1Req = paraReqs.find(
+        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'HEADING_1',
+      );
+      expect(h1Req).toBeUndefined();
+    });
+
+    it('should only convert the first H1 to TITLE, not subsequent H1s', () => {
+      const markdown = '# Title\n\n# Second H1\n\nSome text.';
+      const requests = convertMarkdownToRequests(markdown, 1, undefined, {
+        firstHeadingAsTitle: true,
+      });
+
+      const paraReqs = requests.filter((r) => r.updateParagraphStyle);
+      const titleReqs = paraReqs.filter(
+        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'TITLE',
+      );
+      const h1Reqs = paraReqs.filter(
+        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'HEADING_1',
+      );
+
+      expect(titleReqs).toHaveLength(1);
+      expect(h1Reqs).toHaveLength(1);
+    });
+
+    it('should leave H1 as HEADING_1 when option is disabled (default)', () => {
+      const requests = convertMarkdownToRequests('# Heading 1', 1);
+
+      const paraReq = requests.find((r) => r.updateParagraphStyle);
+      expect(paraReq).toBeDefined();
+      expect(paraReq!.updateParagraphStyle!.paragraphStyle!.namedStyleType).toBe('HEADING_1');
+    });
+
+    it('should not affect H2+ headings when enabled', () => {
+      const markdown = '## Section\n\n### Subsection';
+      const requests = convertMarkdownToRequests(markdown, 1, undefined, {
+        firstHeadingAsTitle: true,
+      });
+
+      const paraReqs = requests.filter((r) => r.updateParagraphStyle);
+      const titleReqs = paraReqs.filter(
+        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'TITLE',
+      );
+      expect(titleReqs).toHaveLength(0);
+
+      const h2 = paraReqs.find(
+        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'HEADING_2',
+      );
+      const h3 = paraReqs.find(
+        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'HEADING_3',
+      );
+      expect(h2).toBeDefined();
+      expect(h3).toBeDefined();
+    });
+
+    it('should handle a full document with title, headings, and lists', () => {
+      const markdown = [
+        '# Project Plan',
+        '',
+        '## Overview',
+        '',
+        'This is the overview.',
+        '',
+        '## Tasks',
+        '',
+        '- Task 1',
+        '- Task 2',
+      ].join('\n');
+
+      const requests = convertMarkdownToRequests(markdown, 1, undefined, {
+        firstHeadingAsTitle: true,
+      });
+
+      const paraReqs = requests.filter((r) => r.updateParagraphStyle);
+      const titleReqs = paraReqs.filter(
+        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'TITLE',
+      );
+      const h2Reqs = paraReqs.filter(
+        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'HEADING_2',
+      );
+
+      expect(titleReqs).toHaveLength(1);
+      expect(h2Reqs).toHaveLength(2);
+    });
+  });
+
   describe('Lists', () => {
     it('should convert bullet lists', () => {
       const requests = convertMarkdownToRequests('- Item 1\n- Item 2\n- Item 3', 1);
@@ -218,6 +316,47 @@ describe('Markdown to Docs Conversion', () => {
         return headingStart >= startIndex! && headingStart < endIndex!;
       });
       expect(overlappingBullet).toBeUndefined();
+    });
+
+    it('should not merge separate bullet lists with content between them', () => {
+      const markdown = [
+        '**Part 1: The Question**',
+        '- Item A',
+        '- Item B',
+        '',
+        '**Part 2: The Results**',
+        '- Item C',
+        '- Item D',
+      ].join('\n');
+
+      const requests = convertMarkdownToRequests(markdown, 1);
+      const bulletReqs = requests.filter((r) => r.createParagraphBullets);
+
+      // Should produce two separate bullet ranges, not one merged range
+      expect(bulletReqs).toHaveLength(2);
+
+      // The paragraph "Part 2: The Results" must not fall inside any bullet range
+      const insertReqs = requests.filter((r) => r.insertText);
+      let part2Index: number | undefined;
+      for (const r of insertReqs) {
+        if (r.insertText!.text!.includes('Part 2')) {
+          part2Index = r.insertText!.location!.index!;
+          break;
+        }
+      }
+      expect(part2Index).toBeDefined();
+
+      for (const b of bulletReqs) {
+        const { startIndex, endIndex } = b.createParagraphBullets!.range!;
+        const inside = part2Index! >= startIndex! && part2Index! < endIndex!;
+        expect(inside).toBe(false);
+      }
+    });
+
+    it('should keep adjacent items in the same list merged', () => {
+      const requests = convertMarkdownToRequests('- A\n- B\n- C', 1);
+      const bulletReqs = requests.filter((r) => r.createParagraphBullets);
+      expect(bulletReqs).toHaveLength(1);
     });
   });
 

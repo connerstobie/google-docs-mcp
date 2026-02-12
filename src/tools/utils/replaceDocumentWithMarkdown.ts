@@ -24,6 +24,13 @@ export function register(server: FastMCP) {
         .describe(
           'The ID of the specific tab to replace content in. If not specified, replaces content in the first tab.'
         ),
+      firstHeadingAsTitle: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe(
+          'If true, the first H1 heading (# ...) in the markdown is styled as a Google Docs TITLE instead of Heading 1. Useful when the markdown represents a full document whose first line is the document title.'
+        ),
     }),
     execute: async (args, { log }) => {
       const docs = await getDocsClient();
@@ -96,6 +103,7 @@ export function register(server: FastMCP) {
         const result = await insertMarkdown(docs, args.documentId, args.markdown, {
           startIndex,
           tabId: args.tabId,
+          firstHeadingAsTitle: args.firstHeadingAsTitle,
         });
 
         const debugSummary = formatInsertResult(result);

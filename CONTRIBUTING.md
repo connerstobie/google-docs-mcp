@@ -48,7 +48,7 @@ Point your MCP client at the local build for testing:
   "mcpServers": {
     "google-docs": {
       "command": "node",
-      "args": ["/absolute/path/to/google-docs-mcp/dist/cli.js"]
+      "args": ["/absolute/path/to/google-docs-mcp/dist/index.js"]
     }
   }
 }
@@ -72,8 +72,7 @@ Point your MCP client at the local build for testing:
 ### Entry Points
 
 ```
-src/cli.ts          CLI entry point (auth subcommand or server start)
-src/server.ts       FastMCP server setup and startup
+src/index.ts        Entry point: CLI (auth subcommand) and MCP server startup
 src/auth.ts         OAuth / service account authentication
 src/clients.ts      Google API client singletons (Docs, Drive, Sheets)
 ```
