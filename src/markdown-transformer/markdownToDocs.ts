@@ -80,6 +80,8 @@ interface ConversionContext {
   formattingStack: FormattingState[];
   listStack: ListState[];
   paragraphRanges: ParagraphRange[];
+  normalParagraphRanges: { startIndex: number; endIndex: number }[];
+  listSpacingRanges: { startIndex: number; endIndex: number }[];
   pendingListItems: PendingListItem[];
   openListItemStack: number[];
   hrRanges: { startIndex: number; endIndex: number }[];
@@ -130,6 +132,8 @@ export function convertMarkdownToRequests(
     formattingStack: [],
     listStack: [],
     paragraphRanges: [],
+    normalParagraphRanges: [],
+    listSpacingRanges: [],
     pendingListItems: [],
     openListItemStack: [],
     hrRanges: [],
@@ -221,13 +225,13 @@ function processToken(token: Token, context: ConversionContext): void {
       context.listStack.push({ type: 'bullet', level: context.listStack.length });
       break;
     case 'bullet_list_close':
-      context.listStack.pop();
+      handleListClose(context);
       break;
     case 'ordered_list_open':
       context.listStack.push({ type: 'ordered', level: context.listStack.length });
       break;
     case 'ordered_list_close':
-      context.listStack.pop();
+      handleListClose(context);
       break;
     case 'list_item_open':
       handleListItemOpen(context);
@@ -343,6 +347,9 @@ function handleParagraphOpen(context: ConversionContext): void {
 }
 
 function handleParagraphClose(context: ConversionContext): void {
+  // Track normal (non-list) paragraph ranges for spacing
+  const paragraphStart = context.currentParagraphStart;
+
   if (!lastInsertEndsWithNewline(context)) {
     insertText('\n', context);
   }
@@ -356,6 +363,15 @@ function handleParagraphClose(context: ConversionContext): void {
       currentListItem.endIndex = paragraphEndIndex;
     }
   }
+
+  // Record the range for normal paragraphs (not list items) so we can apply spacing later
+  if (paragraphStart !== undefined && context.listStack.length === 0) {
+    context.normalParagraphRanges.push({
+      startIndex: paragraphStart,
+      endIndex: context.currentIndex,
+    });
+  }
+
   context.currentParagraphStart = undefined;
 }
 
@@ -400,6 +416,27 @@ function handleListItemClose(context: ConversionContext): void {
 
   if (!lastInsertEndsWithNewline(context)) {
     insertText('\n', context);
+  }
+}
+
+function handleListClose(context: ConversionContext): void {
+  context.listStack.pop();
+
+  // When a top-level list closes (stack becomes empty), record the range of the
+  // last list item's paragraph so we can apply spaceBelow to it. This creates a
+  // visible gap between the end of a list and the following content.
+  if (context.listStack.length === 0) {
+    // Find the last pending list item that has a valid endIndex
+    for (let i = context.pendingListItems.length - 1; i >= 0; i--) {
+      const item = context.pendingListItems[i];
+      if (item.endIndex !== undefined && item.endIndex > item.startIndex) {
+        context.listSpacingRanges.push({
+          startIndex: item.startIndex,
+          endIndex: item.endIndex,
+        });
+        break;
+      }
+    }
   }
 }
 
@@ -574,6 +611,53 @@ function finalizeFormatting(context: ConversionContext): void {
         context.formatRequests.push(paraRequest.request);
       }
     }
+  }
+
+  // Normal paragraph spacing (spaceBelow so paragraphs have visible gaps between them,
+  // matching the visual separation expected from markdown-rendered paragraphs).
+  // The default Google Docs NORMAL_TEXT style has 0pt spacing, so without this
+  // paragraphs would appear crammed together with no gap.
+  for (const normalRange of context.normalParagraphRanges) {
+    const range: docs_v1.Schema$Range = {
+      startIndex: normalRange.startIndex,
+      endIndex: normalRange.endIndex,
+    };
+    if (context.tabId) {
+      range.tabId = context.tabId;
+    }
+
+    context.formatRequests.push({
+      updateParagraphStyle: {
+        range,
+        paragraphStyle: {
+          spaceBelow: { magnitude: 8, unit: 'PT' },
+        },
+        fields: 'spaceBelow',
+      },
+    });
+  }
+
+  // List trailing spacing: apply spaceBelow to the last paragraph of each
+  // top-level list so there is a visible gap between the list and the content
+  // that follows it.
+  for (const listRange of context.listSpacingRanges) {
+    const range: docs_v1.Schema$Range = {
+      startIndex: listRange.startIndex,
+      endIndex: listRange.endIndex,
+    };
+    if (context.tabId) {
+      range.tabId = context.tabId;
+    }
+
+    context.formatRequests.push({
+      updateParagraphStyle: {
+        range,
+        paragraphStyle: {
+          spaceBelow: { magnitude: 8, unit: 'PT' },
+        },
+        fields: 'spaceBelow',
+      },
+    });
   }
 
   // Horizontal rule styling (bottom border on empty paragraphs)

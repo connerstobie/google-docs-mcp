@@ -440,6 +440,144 @@ More content.`;
     });
   });
 
+  describe('Paragraph Spacing', () => {
+    it('should apply spaceBelow to normal text paragraphs', () => {
+      const requests = convertMarkdownToRequests('First paragraph.\n\nSecond paragraph.', 1);
+
+      const spacingReqs = requests.filter(
+        (r) =>
+          r.updateParagraphStyle?.paragraphStyle?.spaceBelow &&
+          !r.updateParagraphStyle?.paragraphStyle?.namedStyleType &&
+          !r.updateParagraphStyle?.paragraphStyle?.borderBottom
+      );
+      expect(spacingReqs).toHaveLength(2);
+
+      for (const req of spacingReqs) {
+        expect(req.updateParagraphStyle!.paragraphStyle!.spaceBelow!.magnitude).toBe(8);
+        expect(req.updateParagraphStyle!.paragraphStyle!.spaceBelow!.unit).toBe('PT');
+        expect(req.updateParagraphStyle!.fields).toBe('spaceBelow');
+      }
+    });
+
+    it('should only apply spaceBelow to the last item of a list, not every item', () => {
+      const requests = convertMarkdownToRequests('- Item 1\n- Item 2\n- Item 3', 1);
+
+      const spacingReqs = requests.filter(
+        (r) =>
+          r.updateParagraphStyle?.paragraphStyle?.spaceBelow &&
+          !r.updateParagraphStyle?.paragraphStyle?.namedStyleType &&
+          !r.updateParagraphStyle?.paragraphStyle?.borderBottom
+      );
+      // Only 1 spacing request: the trailing spacing on the last list item
+      expect(spacingReqs).toHaveLength(1);
+    });
+
+    it('should not apply spaceBelow to headings (they have named styles)', () => {
+      const requests = convertMarkdownToRequests('# Heading\n\n## Subheading', 1);
+
+      const spacingReqs = requests.filter(
+        (r) =>
+          r.updateParagraphStyle?.paragraphStyle?.spaceBelow &&
+          !r.updateParagraphStyle?.paragraphStyle?.namedStyleType &&
+          !r.updateParagraphStyle?.paragraphStyle?.borderBottom
+      );
+      expect(spacingReqs).toHaveLength(0);
+    });
+
+    it('should apply spaceBelow to normal paragraphs and last list items in mixed content', () => {
+      const markdown = '# Title\n\nA paragraph.\n\n- List item\n\nAnother paragraph.';
+      const requests = convertMarkdownToRequests(markdown, 1);
+
+      const spacingReqs = requests.filter(
+        (r) =>
+          r.updateParagraphStyle?.paragraphStyle?.spaceBelow &&
+          !r.updateParagraphStyle?.paragraphStyle?.namedStyleType &&
+          !r.updateParagraphStyle?.paragraphStyle?.borderBottom
+      );
+      // "A paragraph." + "Another paragraph." + last list item trailing spacing = 3
+      expect(spacingReqs).toHaveLength(3);
+    });
+
+    it('should include tabId in spacing requests when provided', () => {
+      const requests = convertMarkdownToRequests('A paragraph.', 1, 'tab-xyz');
+
+      const spacingReqs = requests.filter(
+        (r) =>
+          r.updateParagraphStyle?.paragraphStyle?.spaceBelow &&
+          !r.updateParagraphStyle?.paragraphStyle?.namedStyleType
+      );
+      expect(spacingReqs).toHaveLength(1);
+      expect(spacingReqs[0].updateParagraphStyle!.range!.tabId).toBe('tab-xyz');
+    });
+  });
+
+  describe('List Trailing Spacing', () => {
+    // Helper to find spacing requests that target list items (not normal paragraphs or headings).
+    // We identify them by checking they don't overlap with normalParagraph spacing ranges or
+    // heading styles. Instead we just verify the total spaceBelow count vs paragraph-only count.
+    function getListSpacingReqs(requests: ReturnType<typeof convertMarkdownToRequests>) {
+      // All spaceBelow requests that are NOT heading styles and NOT border styles
+      return requests.filter(
+        (r) =>
+          r.updateParagraphStyle?.paragraphStyle?.spaceBelow &&
+          !r.updateParagraphStyle?.paragraphStyle?.namedStyleType &&
+          !r.updateParagraphStyle?.paragraphStyle?.borderBottom
+      );
+    }
+
+    it('should apply spaceBelow to the last item of a bullet list', () => {
+      const requests = convertMarkdownToRequests('- Item 1\n- Item 2\n- Item 3', 1);
+
+      const spacingReqs = getListSpacingReqs(requests);
+      // 1 request for the last list item (no normal paragraphs here)
+      expect(spacingReqs).toHaveLength(1);
+      expect(spacingReqs[0].updateParagraphStyle!.paragraphStyle!.spaceBelow!.magnitude).toBe(8);
+    });
+
+    it('should apply spaceBelow to the last item of an ordered list', () => {
+      const requests = convertMarkdownToRequests('1. First\n2. Second\n3. Third', 1);
+
+      const spacingReqs = getListSpacingReqs(requests);
+      expect(spacingReqs).toHaveLength(1);
+      expect(spacingReqs[0].updateParagraphStyle!.paragraphStyle!.spaceBelow!.magnitude).toBe(8);
+    });
+
+    it('should apply spaceBelow after each separate list in the document', () => {
+      const markdown = '- A\n- B\n\nSome text.\n\n1. One\n2. Two';
+      const requests = convertMarkdownToRequests(markdown, 1);
+
+      const spacingReqs = getListSpacingReqs(requests);
+      // 2 list-trailing spacing + 1 normal paragraph spacing = 3 total
+      expect(spacingReqs).toHaveLength(3);
+    });
+
+    it('should create spacing between a list and the following paragraph', () => {
+      const markdown = '- Item 1\n- Item 2\n\nFollowing paragraph.';
+      const requests = convertMarkdownToRequests(markdown, 1);
+
+      const spacingReqs = getListSpacingReqs(requests);
+      // 1 for last list item + 1 for the following paragraph = 2
+      expect(spacingReqs).toHaveLength(2);
+    });
+
+    it('should handle nested lists and apply spacing after the top-level list', () => {
+      const markdown = '- Parent\n  - Child 1\n  - Child 2\n\nAfter the list.';
+      const requests = convertMarkdownToRequests(markdown, 1);
+
+      const spacingReqs = getListSpacingReqs(requests);
+      // 1 for last item of the top-level list + 1 for the following paragraph = 2
+      expect(spacingReqs).toHaveLength(2);
+    });
+
+    it('should include tabId in list spacing requests when provided', () => {
+      const requests = convertMarkdownToRequests('- Item 1\n- Item 2', 1, 'tab-list');
+
+      const spacingReqs = getListSpacingReqs(requests);
+      expect(spacingReqs).toHaveLength(1);
+      expect(spacingReqs[0].updateParagraphStyle!.range!.tabId).toBe('tab-list');
+    });
+  });
+
   describe('Edge Cases', () => {
     it('should handle empty markdown', () => {
       expect(convertMarkdownToRequests('', 1)).toHaveLength(0);

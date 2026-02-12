@@ -27,9 +27,9 @@ export function register(server: FastMCP) {
       firstHeadingAsTitle: z
         .boolean()
         .optional()
-        .default(false)
+        .default(true)
         .describe(
-          'If true, the first H1 heading (# ...) in the markdown is styled as a Google Docs TITLE instead of Heading 1. Useful when the markdown represents a full document whose first line is the document title.'
+          'If true (default), the first H1 heading (# ...) in the markdown is styled as a Google Docs TITLE instead of Heading 1. Useful when the markdown represents a full document whose first line is the document title. Set to false if the first H1 should remain a Heading 1.'
         ),
     }),
     execute: async (args, { log }) => {
