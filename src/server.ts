@@ -3,6 +3,11 @@ import { FastMCP } from 'fastmcp';
 import { initializeGoogleClient } from './clients.js';
 import { registerAllTools } from './tools/index.js';
 
+// MCP stdio transport uses stdout for protocol frames. Route accidental logs to stderr.
+console.log = (...args: unknown[]) => {
+  console.error(...args);
+};
+
 // Set up process-level unhandled error/rejection handlers to prevent crashes
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);

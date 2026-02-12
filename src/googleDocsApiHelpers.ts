@@ -221,9 +221,7 @@ export async function findTextRange(
     // Sort segments by starting position to ensure correct ordering
     segments.sort((a, b) => a.start - b.start);
 
-    console.log(
-      `Document ${documentId} contains ${segments.length} text segments and ${fullText.length} characters in total.`
-    );
+    console.error(`Document ${documentId} contains ${segments.length} text segments and ${fullText.length} characters in total.`);
 
     // Find the specified instance of the text
     let startIndex = -1;
@@ -232,62 +230,44 @@ export async function findTextRange(
     let searchStartIndex = 0;
 
     while (foundCount < instance) {
-      const currentIndex = fullText.indexOf(textToFind, searchStartIndex);
-      if (currentIndex === -1) {
-        console.log(
-          `Search text "${textToFind}" not found for instance ${foundCount + 1} (requested: ${instance})`
-        );
-        break;
-      }
-
-      foundCount++;
-      console.log(
-        `Found instance ${foundCount} of "${textToFind}" at position ${currentIndex} in full text`
-      );
-
-      if (foundCount === instance) {
-        const targetStartInFullText = currentIndex;
-        const targetEndInFullText = currentIndex + textToFind.length;
-        let currentPosInFullText = 0;
-
-        console.log(
-          `Target text range in full text: ${targetStartInFullText}-${targetEndInFullText}`
-        );
-
-        for (const seg of segments) {
-          const segStartInFullText = currentPosInFullText;
-          const segTextLength = seg.text.length;
-          const segEndInFullText = segStartInFullText + segTextLength;
-
-          // Map from reconstructed text position to actual document indices
-          if (
-            startIndex === -1 &&
-            targetStartInFullText >= segStartInFullText &&
-            targetStartInFullText < segEndInFullText
-          ) {
-            startIndex = seg.start + (targetStartInFullText - segStartInFullText);
-            console.log(`Mapped start to segment ${seg.start}-${seg.end}, position ${startIndex}`);
-          }
-
-          if (targetEndInFullText > segStartInFullText && targetEndInFullText <= segEndInFullText) {
-            endIndex = seg.start + (targetEndInFullText - segStartInFullText);
-            console.log(`Mapped end to segment ${seg.start}-${seg.end}, position ${endIndex}`);
+        const currentIndex = fullText.indexOf(textToFind, searchStartIndex);
+        if (currentIndex === -1) {
+            console.error(`Search text "${textToFind}" not found for instance ${foundCount + 1} (requested: ${instance})`);
             break;
-          }
+        }
+
+        foundCount++;
+        console.error(`Found instance ${foundCount} of "${textToFind}" at position ${currentIndex} in full text`);
+
+        if (foundCount === instance) {
+            const targetStartInFullText = currentIndex;
+            const targetEndInFullText = currentIndex + textToFind.length;
+            let currentPosInFullText = 0;
+
+            console.error(`Target text range in full text: ${targetStartInFullText}-${targetEndInFullText}`);
+
+            for (const seg of segments) {
+                const segStartInFullText = currentPosInFullText;
+                const segTextLength = seg.text.length;
+                const segEndInFullText = segStartInFullText + segTextLength;
+
+                // Map from reconstructed text position to actual document indices
+                if (startIndex === -1 && targetStartInFullText >= segStartInFullText && targetStartInFullText < segEndInFullText) {
+                    startIndex = seg.start + (targetStartInFullText - segStartInFullText);
+                    console.error(`Mapped start to segment ${seg.start}-${seg.end}, position ${startIndex}`);
+                }
+
+                if (targetEndInFullText > segStartInFullText && targetEndInFullText <= segEndInFullText) {
+                    endIndex = seg.start + (targetEndInFullText - segStartInFullText);
+                    console.error(`Mapped end to segment ${seg.start}-${seg.end}, position ${endIndex}`);
+                    break;
+                }
 
           currentPosInFullText = segEndInFullText;
         }
 
-        if (startIndex === -1 || endIndex === -1) {
-          console.warn(
-            `Failed to map text "${textToFind}" instance ${instance} to actual document indices`
-          );
-          // Reset and try next occurrence
-          startIndex = -1;
-          endIndex = -1;
-          searchStartIndex = currentIndex + 1;
-          foundCount--;
-          continue;
+            console.error(`Successfully mapped "${textToFind}" to document range ${startIndex}-${endIndex}`);
+            return { startIndex, endIndex };
         }
 
         console.log(
@@ -320,13 +300,9 @@ export async function findTextRange(
 
 // --- Paragraph Boundary Helper ---
 // Enhanced version to handle document structural elements more robustly
-export async function getParagraphRange(
-  docs: Docs,
-  documentId: string,
-  indexWithin: number
-): Promise<{ startIndex: number; endIndex: number } | null> {
-  try {
-    console.log(`Finding paragraph containing index ${indexWithin} in document ${documentId}`);
+export async function getParagraphRange(docs: Docs, documentId: string, indexWithin: number): Promise<{ startIndex: number; endIndex: number } | null> {
+try {
+    console.error(`Finding paragraph containing index ${indexWithin} in document ${documentId}`);
 
     // Request more detailed document structure to handle nested elements
     const res = await docs.documents.get({
@@ -342,34 +318,34 @@ export async function getParagraphRange(
 
     // Find paragraph containing the index
     // We'll look at all structural elements recursively
-    const findParagraphInContent = (
-      content: any[]
-    ): { startIndex: number; endIndex: number } | null => {
-      for (const element of content) {
-        // Check if we have element boundaries defined
-        if (element.startIndex !== undefined && element.endIndex !== undefined) {
-          // Check if index is within this element's range first
-          if (indexWithin >= element.startIndex && indexWithin < element.endIndex) {
-            // If it's a paragraph, we've found our target
-            if (element.paragraph) {
-              console.log(
-                `Found paragraph containing index ${indexWithin}, range: ${element.startIndex}-${element.endIndex}`
-              );
-              return {
-                startIndex: element.startIndex,
-                endIndex: element.endIndex,
-              };
-            }
+    const findParagraphInContent = (content: any[]): { startIndex: number; endIndex: number } | null => {
+        for (const element of content) {
+            // Check if we have element boundaries defined
+            if (element.startIndex !== undefined && element.endIndex !== undefined) {
+                // Check if index is within this element's range first
+                if (indexWithin >= element.startIndex && indexWithin < element.endIndex) {
+                    // If it's a paragraph, we've found our target
+                    if (element.paragraph) {
+                        console.error(`Found paragraph containing index ${indexWithin}, range: ${element.startIndex}-${element.endIndex}`);
+                        return {
+                            startIndex: element.startIndex,
+                            endIndex: element.endIndex
+                        };
+                    }
 
-            // If it's a table, we need to check cells recursively
-            if (element.table && element.table.tableRows) {
-              console.log(`Index ${indexWithin} is within a table, searching cells...`);
-              for (const row of element.table.tableRows) {
-                if (row.tableCells) {
-                  for (const cell of row.tableCells) {
-                    if (cell.content) {
-                      const result = findParagraphInContent(cell.content);
-                      if (result) return result;
+                    // If it's a table, we need to check cells recursively
+                    if (element.table && element.table.tableRows) {
+                        console.error(`Index ${indexWithin} is within a table, searching cells...`);
+                        for (const row of element.table.tableRows) {
+                            if (row.tableCells) {
+                                for (const cell of row.tableCells) {
+                                    if (cell.content) {
+                                        const result = findParagraphInContent(cell.content);
+                                        if (result) return result;
+                                    }
+                                }
+                            }
+                        }
                     }
                   }
                 }
@@ -393,9 +369,7 @@ export async function getParagraphRange(
     if (!paragraphRange) {
       console.warn(`Could not find paragraph containing index ${indexWithin}`);
     } else {
-      console.log(
-        `Returning paragraph range: ${paragraphRange.startIndex}-${paragraphRange.endIndex}`
-      );
+        console.error(`Returning paragraph range: ${paragraphRange.startIndex}-${paragraphRange.endIndex}`);
     }
 
     return paragraphRange;
@@ -484,90 +458,87 @@ export function buildUpdateTextStyleRequest(
 }
 
 export function buildUpdateParagraphStyleRequest(
-  startIndex: number,
-  endIndex: number,
-  style: ParagraphStyleArgs,
-  tabId?: string
-): { request: docs_v1.Schema$Request; fields: string[] } | null {
-  // Create style object and track which fields to update
-  const paragraphStyle: docs_v1.Schema$ParagraphStyle = {};
-  const fieldsToUpdate: string[] = [];
+startIndex: number,
+endIndex: number,
+style: ParagraphStyleArgs,
+tabId?: string
+): { request: docs_v1.Schema$Request, fields: string[] } | null {
+    // Create style object and track which fields to update
+    const paragraphStyle: docs_v1.Schema$ParagraphStyle = {};
+    const fieldsToUpdate: string[] = [];
 
-  console.log(
-    `Building paragraph style request for range ${startIndex}-${endIndex} with options:`,
-    style
-  );
+    console.error(`Building paragraph style request for range ${startIndex}-${endIndex} with options:`, style);
 
-  // Process alignment option (LEFT, CENTER, RIGHT, JUSTIFIED)
-  if (style.alignment !== undefined) {
-    paragraphStyle.alignment = style.alignment;
-    fieldsToUpdate.push('alignment');
-    console.log(`Setting alignment to ${style.alignment}`);
-  }
+    // Process alignment option (LEFT, CENTER, RIGHT, JUSTIFIED)
+    if (style.alignment !== undefined) {
+        paragraphStyle.alignment = style.alignment;
+        fieldsToUpdate.push('alignment');
+        console.error(`Setting alignment to ${style.alignment}`);
+    }
 
-  // Process indentation options
-  if (style.indentStart !== undefined) {
-    paragraphStyle.indentStart = { magnitude: style.indentStart, unit: 'PT' };
-    fieldsToUpdate.push('indentStart');
-    console.log(`Setting left indent to ${style.indentStart}pt`);
-  }
+    // Process indentation options
+    if (style.indentStart !== undefined) {
+        paragraphStyle.indentStart = { magnitude: style.indentStart, unit: 'PT' };
+        fieldsToUpdate.push('indentStart');
+        console.error(`Setting left indent to ${style.indentStart}pt`);
+    }
 
-  if (style.indentEnd !== undefined) {
-    paragraphStyle.indentEnd = { magnitude: style.indentEnd, unit: 'PT' };
-    fieldsToUpdate.push('indentEnd');
-    console.log(`Setting right indent to ${style.indentEnd}pt`);
-  }
+    if (style.indentEnd !== undefined) {
+        paragraphStyle.indentEnd = { magnitude: style.indentEnd, unit: 'PT' };
+        fieldsToUpdate.push('indentEnd');
+        console.error(`Setting right indent to ${style.indentEnd}pt`);
+    }
 
-  // Process spacing options
-  if (style.spaceAbove !== undefined) {
-    paragraphStyle.spaceAbove = { magnitude: style.spaceAbove, unit: 'PT' };
-    fieldsToUpdate.push('spaceAbove');
-    console.log(`Setting space above to ${style.spaceAbove}pt`);
-  }
+    // Process spacing options
+    if (style.spaceAbove !== undefined) {
+        paragraphStyle.spaceAbove = { magnitude: style.spaceAbove, unit: 'PT' };
+        fieldsToUpdate.push('spaceAbove');
+        console.error(`Setting space above to ${style.spaceAbove}pt`);
+    }
 
-  if (style.spaceBelow !== undefined) {
-    paragraphStyle.spaceBelow = { magnitude: style.spaceBelow, unit: 'PT' };
-    fieldsToUpdate.push('spaceBelow');
-    console.log(`Setting space below to ${style.spaceBelow}pt`);
-  }
+    if (style.spaceBelow !== undefined) {
+        paragraphStyle.spaceBelow = { magnitude: style.spaceBelow, unit: 'PT' };
+        fieldsToUpdate.push('spaceBelow');
+        console.error(`Setting space below to ${style.spaceBelow}pt`);
+    }
 
-  // Process named style types (headings, etc.)
-  if (style.namedStyleType !== undefined) {
-    paragraphStyle.namedStyleType = style.namedStyleType;
-    fieldsToUpdate.push('namedStyleType');
-    console.log(`Setting named style to ${style.namedStyleType}`);
-  }
+    // Process named style types (headings, etc.)
+    if (style.namedStyleType !== undefined) {
+        paragraphStyle.namedStyleType = style.namedStyleType;
+        fieldsToUpdate.push('namedStyleType');
+        console.error(`Setting named style to ${style.namedStyleType}`);
+    }
 
-  // Process page break control
-  if (style.keepWithNext !== undefined) {
-    paragraphStyle.keepWithNext = style.keepWithNext;
-    fieldsToUpdate.push('keepWithNext');
-    console.log(`Setting keepWithNext to ${style.keepWithNext}`);
-  }
+    // Process page break control
+    if (style.keepWithNext !== undefined) {
+        paragraphStyle.keepWithNext = style.keepWithNext;
+        fieldsToUpdate.push('keepWithNext');
+        console.error(`Setting keepWithNext to ${style.keepWithNext}`);
+    }
 
-  // Verify we have styles to apply
-  if (fieldsToUpdate.length === 0) {
-    console.warn('No paragraph styling options were provided');
-    return null; // No styles to apply
-  }
+    // Verify we have styles to apply
+    if (fieldsToUpdate.length === 0) {
+        console.warn("No paragraph styling options were provided");
+        return null; // No styles to apply
+    }
 
-  // Build the range with optional tabId
-  const range: docs_v1.Schema$Range = { startIndex, endIndex };
-  if (tabId) {
-    range.tabId = tabId;
-  }
+    // Build the range with optional tabId
+    const range: docs_v1.Schema$Range = { startIndex, endIndex };
+    if (tabId) {
+        range.tabId = tabId;
+    }
 
-  // Build the request object
-  const request: docs_v1.Schema$Request = {
-    updateParagraphStyle: {
-      range,
-      paragraphStyle: paragraphStyle,
-      fields: fieldsToUpdate.join(','),
-    },
-  };
+    // Build the request object
+    const request: docs_v1.Schema$Request = {
+        updateParagraphStyle: {
+            range,
+            paragraphStyle: paragraphStyle,
+            fields: fieldsToUpdate.join(','),
+        }
+    };
 
-  console.log(`Created paragraph style request with fields: ${fieldsToUpdate.join(', ')}`);
-  return { request, fields: fieldsToUpdate };
+    console.error(`Created paragraph style request with fields: ${fieldsToUpdate.join(', ')}`);
+    return { request, fields: fieldsToUpdate };
 }
 
 // --- Specific Feature Helpers ---
