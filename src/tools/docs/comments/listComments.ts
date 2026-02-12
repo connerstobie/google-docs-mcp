@@ -7,7 +7,8 @@ import { DocumentIdParameter } from '../../../types.js';
 export function register(server: FastMCP) {
   server.addTool({
     name: 'listComments',
-    description: 'Lists all comments in a document with their IDs, authors, status, and quoted text. Returns data needed to call getComment, replyToComment, resolveComment, or deleteComment.',
+    description:
+      'Lists all comments in a document with their IDs, authors, status, and quoted text. Returns data needed to call getComment, replyToComment, resolveComment, or deleteComment.',
     parameters: DocumentIdParameter,
     execute: async (args, { log }) => {
       log.info(`Listing comments for document ${args.documentId}`);

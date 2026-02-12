@@ -7,9 +7,12 @@ import { getDriveClient } from '../../clients.js';
 export function register(server: FastMCP) {
   server.addTool({
     name: 'copyFile',
-    description: 'Creates a copy of a file or document in Google Drive. Returns the new copy\'s ID and URL.',
+    description:
+      "Creates a copy of a file or document in Google Drive. Returns the new copy's ID and URL.",
     parameters: z.object({
-      fileId: z.string().describe('The file or folder ID from a Google Drive URL or a previous tool result.'),
+      fileId: z
+        .string()
+        .describe('The file or folder ID from a Google Drive URL or a previous tool result.'),
       newName: z
         .string()
         .optional()
@@ -51,11 +54,15 @@ export function register(server: FastMCP) {
         });
 
         const copiedFile = response.data;
-        return JSON.stringify({
-          id: copiedFile.id,
-          name: copiedFile.name,
-          url: copiedFile.webViewLink,
-        }, null, 2);
+        return JSON.stringify(
+          {
+            id: copiedFile.id,
+            name: copiedFile.name,
+            url: copiedFile.webViewLink,
+          },
+          null,
+          2
+        );
       } catch (error: any) {
         log.error(`Error copying file: ${error.message || error}`);
         if (error.code === 404)

@@ -50,9 +50,7 @@ try {
 
   server.start({ transportType: 'stdio' as const });
   logger.info('MCP Server running using stdio. Awaiting client connection...');
-  logger.info(
-    'Process-level error handling configured to prevent crashes from timeout errors.',
-  );
+  logger.info('Process-level error handling configured to prevent crashes from timeout errors.');
 } catch (startError: any) {
   logger.error('FATAL: Server failed to start:', startError.message || startError);
   process.exit(1);

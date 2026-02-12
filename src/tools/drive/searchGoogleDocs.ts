@@ -6,7 +6,8 @@ import { getDriveClient } from '../../clients.js';
 export function register(server: FastMCP) {
   server.addTool({
     name: 'searchDocuments',
-    description: 'Searches for documents by name, content, or both. Use listDocuments for browsing and this tool for targeted queries.',
+    description:
+      'Searches for documents by name, content, or both. Use listDocuments for browsing and this tool for targeted queries.',
     parameters: z.object({
       query: z.string().min(1).describe('Search term to find in document names or content.'),
       searchIn: z

@@ -16,36 +16,36 @@ docs/
 
 ## Core Read/Write
 
-| Tool | Description |
-|------|-------------|
-| `readDocument` | Reads document content as plain text, markdown, or JSON |
-| `listTabs` | Lists all tabs in a document with their IDs and hierarchy |
-| `appendText` | Appends plain text to the end of a document |
-| `insertText` | Inserts text at a specific character index |
-| `deleteRange` | Deletes content within a character range |
+| Tool           | Description                                               |
+| -------------- | --------------------------------------------------------- |
+| `readDocument` | Reads document content as plain text, markdown, or JSON   |
+| `listTabs`     | Lists all tabs in a document with their IDs and hierarchy |
+| `appendText`   | Appends plain text to the end of a document               |
+| `insertText`   | Inserts text at a specific character index                |
+| `deleteRange`  | Deletes content within a character range                  |
 
 ## Structure
 
-| Tool | Description |
-|------|-------------|
-| `insertTable` | Inserts an empty table at a character index |
-| `insertPageBreak` | Inserts a page break at a character index |
-| `insertImage` | Inserts an image from a URL or local file path |
+| Tool              | Description                                    |
+| ----------------- | ---------------------------------------------- |
+| `insertTable`     | Inserts an empty table at a character index    |
+| `insertPageBreak` | Inserts a page break at a character index      |
+| `insertImage`     | Inserts an image from a URL or local file path |
 
 ## [Formatting](./formatting/)
 
-| Tool | Description |
-|------|-------------|
-| `applyTextStyle` | Applies character-level formatting (bold, color, font, etc.) to a range or found text |
-| `applyParagraphStyle` | Applies paragraph-level formatting (alignment, spacing, heading styles) |
+| Tool                  | Description                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------- |
+| `applyTextStyle`      | Applies character-level formatting (bold, color, font, etc.) to a range or found text |
+| `applyParagraphStyle` | Applies paragraph-level formatting (alignment, spacing, heading styles)               |
 
 ## [Comments](./comments/)
 
-| Tool | Description |
-|------|-------------|
-| `listComments` | Lists all comments with IDs, authors, status, and quoted text |
-| `getComment` | Gets a specific comment and its full reply thread |
-| `addComment` | Adds a comment at a specific text range |
-| `replyToComment` | Adds a reply to an existing comment thread |
-| `resolveComment` | Marks a comment as resolved |
-| `deleteComment` | Permanently deletes a comment and all its replies |
+| Tool             | Description                                                   |
+| ---------------- | ------------------------------------------------------------- |
+| `listComments`   | Lists all comments with IDs, authors, status, and quoted text |
+| `getComment`     | Gets a specific comment and its full reply thread             |
+| `addComment`     | Adds a comment at a specific text range                       |
+| `replyToComment` | Adds a reply to an existing comment thread                    |
+| `resolveComment` | Marks a comment as resolved                                   |
+| `deleteComment`  | Permanently deletes a comment and all its replies             |

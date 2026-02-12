@@ -10,7 +10,7 @@ export function register(server: FastMCP) {
   server.addTool({
     name: 'readDocument',
     description:
-      'Reads the content of a Google Document. Returns plain text by default. Use format=\'markdown\' to get formatted content suitable for editing and re-uploading with replaceDocumentWithMarkdown, or format=\'json\' for the raw document structure.',
+      "Reads the content of a Google Document. Returns plain text by default. Use format='markdown' to get formatted content suitable for editing and re-uploading with replaceDocumentWithMarkdown, or format='json' for the raw document structure.",
     parameters: DocumentIdParameter.extend({
       format: z
         .enum(['text', 'json', 'markdown'])
@@ -52,9 +52,7 @@ export function register(server: FastMCP) {
           includeTabsContent: needsTabsContent,
           fields: needsTabsContent ? '*' : fields, // Get full document if using tabs
         });
-        log.info(
-          `Fetched doc: ${args.documentId}${args.tabId ? ` (tab: ${args.tabId})` : ''}`
-        );
+        log.info(`Fetched doc: ${args.documentId}${args.tabId ? ` (tab: ${args.tabId})` : ''}`);
 
         // If tabId is specified, find the specific tab
         let contentSource: any;
@@ -69,9 +67,7 @@ export function register(server: FastMCP) {
             );
           }
           contentSource = { body: targetTab.documentTab.body };
-          log.info(
-            `Using content from tab: ${targetTab.tabProperties?.title || 'Untitled'}`
-          );
+          log.info(`Using content from tab: ${targetTab.tabProperties?.title || 'Untitled'}`);
         } else {
           // Use the document body (backward compatible)
           contentSource = res.data;
@@ -139,17 +135,13 @@ export function register(server: FastMCP) {
         if (!textContent.trim()) return 'Document found, but appears empty.';
 
         const totalLength = textContent.length;
-        log.info(
-          `Document contains ${totalLength} characters across ${elementCount} elements`
-        );
+        log.info(`Document contains ${totalLength} characters across ${elementCount} elements`);
         log.info(`maxLength parameter: ${args.maxLength || 'not specified'}`);
 
         // Apply length limit only if specified
         if (args.maxLength && totalLength > args.maxLength) {
           const truncatedContent = textContent.substring(0, args.maxLength);
-          log.info(
-            `Truncating content from ${totalLength} to ${args.maxLength} characters`
-          );
+          log.info(`Truncating content from ${totalLength} to ${args.maxLength} characters`);
           return `Content (truncated to ${args.maxLength} chars of ${totalLength} total):\n---\n${truncatedContent}\n\n... [Document continues for ${totalLength - args.maxLength} more characters. Use maxLength parameter to adjust limit or remove it to get full content.]`;
         }
 
@@ -163,15 +155,12 @@ export function register(server: FastMCP) {
         return fullResponse;
       } catch (error: any) {
         log.error(`Error reading doc ${args.documentId}: ${error.message || error}`);
-        log.error(
-          `Error details: ${JSON.stringify(error.response?.data || error)}`
-        );
+        log.error(`Error details: ${JSON.stringify(error.response?.data || error)}`);
         // Handle errors thrown by helpers or API directly
         if (error instanceof UserError) throw error;
         if (error instanceof NotImplementedError) throw error;
         // Generic fallback for API errors not caught by helpers
-        if (error.code === 404)
-          throw new UserError(`Doc not found (ID: ${args.documentId}).`);
+        if (error.code === 404) throw new UserError(`Doc not found (ID: ${args.documentId}).`);
         if (error.code === 403)
           throw new UserError(`Permission denied for doc (ID: ${args.documentId}).`);
         // Extract detailed error information from Google API response

@@ -55,17 +55,29 @@ export function formatInsertResult(result: InsertMarkdownResult): string {
   const lines: string[] = [];
   lines.push(`Markdown insert completed in ${result.totalElapsedMs}ms`);
   lines.push(`  Parse: ${result.parseElapsedMs}ms`);
-  lines.push(`  Requests: ${result.totalRequests} total (${Object.entries(result.requestsByType).map(([k, v]) => `${v} ${k}`).join(', ')})`);
-  lines.push(`  API calls: ${result.batchUpdate.totalApiCalls} batchUpdate calls in ${result.batchUpdate.totalElapsedMs}ms`);
+  lines.push(
+    `  Requests: ${result.totalRequests} total (${Object.entries(result.requestsByType)
+      .map(([k, v]) => `${v} ${k}`)
+      .join(', ')})`
+  );
+  lines.push(
+    `  API calls: ${result.batchUpdate.totalApiCalls} batchUpdate calls in ${result.batchUpdate.totalElapsedMs}ms`
+  );
   const { phases } = result.batchUpdate;
   if (phases.delete.requests > 0) {
-    lines.push(`    Delete phase: ${phases.delete.requests} requests, ${phases.delete.apiCalls} calls, ${phases.delete.elapsedMs}ms`);
+    lines.push(
+      `    Delete phase: ${phases.delete.requests} requests, ${phases.delete.apiCalls} calls, ${phases.delete.elapsedMs}ms`
+    );
   }
   if (phases.insert.requests > 0) {
-    lines.push(`    Insert phase: ${phases.insert.requests} requests, ${phases.insert.apiCalls} calls, ${phases.insert.elapsedMs}ms`);
+    lines.push(
+      `    Insert phase: ${phases.insert.requests} requests, ${phases.insert.apiCalls} calls, ${phases.insert.elapsedMs}ms`
+    );
   }
   if (phases.format.requests > 0) {
-    lines.push(`    Format phase: ${phases.format.requests} requests, ${phases.format.apiCalls} calls, ${phases.format.elapsedMs}ms`);
+    lines.push(
+      `    Format phase: ${phases.format.requests} requests, ${phases.format.apiCalls} calls, ${phases.format.elapsedMs}ms`
+    );
   }
   return lines.join('\n');
 }

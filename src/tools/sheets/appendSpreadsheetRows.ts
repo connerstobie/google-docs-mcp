@@ -7,9 +7,14 @@ import * as SheetsHelpers from '../../googleSheetsApiHelpers.js';
 export function register(server: FastMCP) {
   server.addTool({
     name: 'appendRows',
-    description: 'Appends rows to the end of a sheet. Data is added after the last row with content in the specified range.',
+    description:
+      'Appends rows to the end of a sheet. Data is added after the last row with content in the specified range.',
     parameters: z.object({
-      spreadsheetId: z.string().describe('The spreadsheet ID — the long string between /d/ and /edit in a Google Sheets URL.'),
+      spreadsheetId: z
+        .string()
+        .describe(
+          'The spreadsheet ID — the long string between /d/ and /edit in a Google Sheets URL.'
+        ),
       range: z
         .string()
         .describe(
@@ -45,7 +50,9 @@ export function register(server: FastMCP) {
 
         return `Successfully appended ${updatedRows} row(s) (${updatedCells} cells) to spreadsheet. Updated range: ${updatedRange}`;
       } catch (error: any) {
-        log.error(`Error appending to spreadsheet ${args.spreadsheetId}: ${error.message || error}`);
+        log.error(
+          `Error appending to spreadsheet ${args.spreadsheetId}: ${error.message || error}`
+        );
         if (error instanceof UserError) throw error;
         throw new UserError(`Failed to append to spreadsheet: ${error.message || 'Unknown error'}`);
       }

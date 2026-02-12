@@ -113,7 +113,7 @@ export function convertMarkdownToRequests(
   markdown: string,
   startIndex: number = 1,
   tabId?: string,
-  options?: ConversionOptions,
+  options?: ConversionOptions
 ): docs_v1.Schema$Request[] {
   if (!markdown || markdown.trim().length === 0) {
     return [];
@@ -151,7 +151,7 @@ export function convertMarkdownToRequests(
       throw error;
     }
     throw new MarkdownConversionError(
-      `Failed to convert markdown: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      `Failed to convert markdown: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
 }
@@ -303,9 +303,7 @@ function handleHeadingClose(context: ConversionContext): void {
   if (context.currentHeadingLevel && context.currentParagraphStart !== undefined) {
     // When firstHeadingAsTitle is enabled, the very first H1 becomes a TITLE.
     const useTitle =
-      context.firstHeadingAsTitle &&
-      !context.titleConsumed &&
-      context.currentHeadingLevel === 1;
+      context.firstHeadingAsTitle && !context.titleConsumed && context.currentHeadingLevel === 1;
 
     if (useTitle) {
       context.titleConsumed = true;
@@ -543,7 +541,7 @@ function finalizeFormatting(context: ConversionContext): void {
           foregroundColor: range.formatting.code ? CODE_TEXT_HEX : undefined,
           backgroundColor: range.formatting.code ? CODE_BACKGROUND_HEX : undefined,
         },
-        context.tabId,
+        context.tabId
       );
       if (styleRequest) {
         context.formatRequests.push(styleRequest.request);
@@ -555,7 +553,7 @@ function finalizeFormatting(context: ConversionContext): void {
         range.startIndex,
         range.endIndex,
         { linkUrl: range.formatting.link },
-        context.tabId,
+        context.tabId
       );
       if (linkRequest) {
         context.formatRequests.push(linkRequest.request);
@@ -570,7 +568,7 @@ function finalizeFormatting(context: ConversionContext): void {
         paraRange.startIndex,
         paraRange.endIndex,
         { namedStyleType: paraRange.namedStyleType as any },
-        context.tabId,
+        context.tabId
       );
       if (paraRequest) {
         context.formatRequests.push(paraRequest.request);
@@ -619,11 +617,7 @@ function finalizeFormatting(context: ConversionContext): void {
   const mergedListRanges: { startIndex: number; endIndex: number; bulletPreset: string }[] = [];
   for (const item of validListItems) {
     const last = mergedListRanges[mergedListRanges.length - 1];
-    if (
-      last &&
-      last.bulletPreset === item.bulletPreset &&
-      item.startIndex <= last.endIndex + 1
-    ) {
+    if (last && last.bulletPreset === item.bulletPreset && item.startIndex <= last.endIndex + 1) {
       last.endIndex = Math.max(last.endIndex, item.endIndex!);
     } else {
       mergedListRanges.push({

@@ -27,15 +27,17 @@ export function register(server: FastMCP) {
         .int()
         .min(1)
         .describe(
-          '1-based character index in the document body where the image should be inserted. Use readDocument with format=\'json\' to inspect indices.'
+          "1-based character index in the document body where the image should be inserted. Use readDocument with format='json' to inspect indices."
         ),
       width: z.number().min(1).optional().describe('Width of the image in points.'),
       height: z.number().min(1).optional().describe('Height of the image in points.'),
-    }).refine((data) => data.imageUrl || data.localImagePath, {
-      message: 'Either imageUrl or localImagePath must be provided.',
-    }).refine((data) => !(data.imageUrl && data.localImagePath), {
-      message: 'Provide only one of imageUrl or localImagePath, not both.',
-    }),
+    })
+      .refine((data) => data.imageUrl || data.localImagePath, {
+        message: 'Either imageUrl or localImagePath must be provided.',
+      })
+      .refine((data) => !(data.imageUrl && data.localImagePath), {
+        message: 'Provide only one of imageUrl or localImagePath, not both.',
+      }),
     execute: async (args, { log }) => {
       const docs = await getDocsClient();
 
@@ -94,9 +96,7 @@ export function register(server: FastMCP) {
 
         return `Successfully inserted image at index ${args.index}${sizeInfo}.`;
       } catch (error: any) {
-        log.error(
-          `Error inserting image in doc ${args.documentId}: ${error.message || error}`
-        );
+        log.error(`Error inserting image in doc ${args.documentId}: ${error.message || error}`);
         if (error instanceof UserError) throw error;
         throw new UserError(`Failed to insert image: ${error.message || 'Unknown error'}`);
       }

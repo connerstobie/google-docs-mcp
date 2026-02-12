@@ -6,7 +6,8 @@ import { getDriveClient } from '../../clients.js';
 export function register(server: FastMCP) {
   server.addTool({
     name: 'getFolderInfo',
-    description: 'Gets metadata about a Drive folder including its name, owner, sharing status, and parent folder.',
+    description:
+      'Gets metadata about a Drive folder including its name, owner, sharing status, and parent folder.',
     parameters: z.object({
       folderId: z.string().describe('ID of the folder to get information about.'),
     }),

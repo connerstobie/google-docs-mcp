@@ -56,14 +56,14 @@ Point your MCP client at the local build for testing:
 
 ### Scripts
 
-| Command | Description |
-|---------|-------------|
-| `npm start` | Start the MCP server |
-| `npm start auth` | Run the interactive OAuth flow |
-| `npm run build` | Compile TypeScript to `dist/` |
-| `npm test` | Run tests (Vitest) |
-| `npm run format` | Format code with Prettier |
-| `npm run format:check` | Check formatting |
+| Command                | Description                    |
+| ---------------------- | ------------------------------ |
+| `npm start`            | Start the MCP server           |
+| `npm start auth`       | Run the interactive OAuth flow |
+| `npm run build`        | Compile TypeScript to `dist/`  |
+| `npm test`             | Run tests (Vitest)             |
+| `npm run format`       | Format code with Prettier      |
+| `npm run format:check` | Check formatting               |
 
 ---
 
@@ -94,13 +94,13 @@ src/tools/
 
 ### Helpers
 
-| File | Purpose |
-|------|---------|
-| `src/googleDocsApiHelpers.ts` | Text range finding, batch update execution, style request builders |
-| `src/googleSheetsApiHelpers.ts` | A1 notation parsing, cell formatting, freeze, validation |
-| `src/markdown-transformer/` | Markdown parsing and bidirectional Google Docs conversion |
-| `src/types.ts` | Zod schemas, hex color validation, shared type definitions |
-| `src/logger.ts` | Leveled logger (debug/info/warn/error) writing to stderr |
+| File                            | Purpose                                                            |
+| ------------------------------- | ------------------------------------------------------------------ |
+| `src/googleDocsApiHelpers.ts`   | Text range finding, batch update execution, style request builders |
+| `src/googleSheetsApiHelpers.ts` | A1 notation parsing, cell formatting, freeze, validation           |
+| `src/markdown-transformer/`     | Markdown parsing and bidirectional Google Docs conversion          |
+| `src/types.ts`                  | Zod schemas, hex color validation, shared type definitions         |
+| `src/logger.ts`                 | Leveled logger (debug/info/warn/error) writing to stderr           |
 
 ### Authentication Flow
 

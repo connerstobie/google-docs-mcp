@@ -7,9 +7,14 @@ import * as SheetsHelpers from '../../googleSheetsApiHelpers.js';
 export function register(server: FastMCP) {
   server.addTool({
     name: 'addSheet',
-    description: 'Adds a new sheet (tab) to an existing spreadsheet. Returns the new sheet\'s title and ID.',
+    description:
+      "Adds a new sheet (tab) to an existing spreadsheet. Returns the new sheet's title and ID.",
     parameters: z.object({
-      spreadsheetId: z.string().describe('The spreadsheet ID — the long string between /d/ and /edit in a Google Sheets URL.'),
+      spreadsheetId: z
+        .string()
+        .describe(
+          'The spreadsheet ID — the long string between /d/ and /edit in a Google Sheets URL.'
+        ),
       sheetTitle: z.string().min(1).describe('Title for the new sheet/tab.'),
     }),
     execute: async (args, { log }) => {

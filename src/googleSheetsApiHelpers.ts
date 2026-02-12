@@ -320,10 +320,7 @@ function colLettersToIndex(col: string): number {
  * start/end index is left out of the GridRange, which the Sheets API
  * interprets as "unbounded" (i.e., the entire row or column).
  */
-function parseA1ToGridRange(
-  a1Range: string,
-  sheetId: number
-): sheets_v4.Schema$GridRange {
+function parseA1ToGridRange(a1Range: string, sheetId: number): sheets_v4.Schema$GridRange {
   // Whole-row pattern: "1:3" or "1"
   const rowOnlyMatch = a1Range.match(/^(\d+)(?::(\d+))?$/);
   if (rowOnlyMatch) {
@@ -587,9 +584,7 @@ export async function setDropdownValidation(
       );
     }
     if (error instanceof UserError) throw error;
-    throw new UserError(
-      `Failed to set dropdown validation: ${error.message || 'Unknown error'}`
-    );
+    throw new UserError(`Failed to set dropdown validation: ${error.message || 'Unknown error'}`);
   }
 }
 

@@ -6,16 +6,17 @@ import { getDriveClient } from '../../clients.js';
 export function register(server: FastMCP) {
   server.addTool({
     name: 'deleteFile',
-    description: 'Moves a file or folder to the trash, or permanently deletes it. Set permanent=true for irreversible deletion.',
+    description:
+      'Moves a file or folder to the trash, or permanently deletes it. Set permanent=true for irreversible deletion.',
     parameters: z.object({
-      fileId: z.string().describe('The file or folder ID from a Google Drive URL or a previous tool result.'),
+      fileId: z
+        .string()
+        .describe('The file or folder ID from a Google Drive URL or a previous tool result.'),
       permanent: z
         .boolean()
         .optional()
         .default(false)
-        .describe(
-          'If true, permanently deletes the file instead of moving it to trash.'
-        ),
+        .describe('If true, permanently deletes the file instead of moving it to trash.'),
     }),
     execute: async (args, { log }) => {
       const drive = await getDriveClient();

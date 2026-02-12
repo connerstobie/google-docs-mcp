@@ -7,7 +7,8 @@ import { getDriveClient } from '../../clients.js';
 export function register(server: FastMCP) {
   server.addTool({
     name: 'createFolder',
-    description: 'Creates a new folder in Google Drive. Optionally places it inside an existing parent folder.',
+    description:
+      'Creates a new folder in Google Drive. Optionally places it inside an existing parent folder.',
     parameters: z.object({
       name: z.string().min(1).describe('Name for the new folder.'),
       parentFolderId: z
@@ -38,11 +39,15 @@ export function register(server: FastMCP) {
         });
 
         const folder = response.data;
-        return JSON.stringify({
-          id: folder.id,
-          name: folder.name,
-          url: folder.webViewLink,
-        }, null, 2);
+        return JSON.stringify(
+          {
+            id: folder.id,
+            name: folder.name,
+            url: folder.webViewLink,
+          },
+          null,
+          2
+        );
       } catch (error: any) {
         log.error(`Error creating folder: ${error.message || error}`);
         if (error.code === 404)

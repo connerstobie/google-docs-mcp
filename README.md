@@ -56,64 +56,64 @@ The server starts automatically when your MCP client needs it.
 
 ### Google Docs
 
-| Tool | Description |
-|------|-------------|
-| `readDocument` | Read content as plain text, JSON, or markdown |
-| `appendText` | Append text to a document |
-| `insertText` | Insert text at a specific position |
-| `deleteRange` | Remove content by index range |
-| `listDocumentTabs` | List all tabs in a multi-tab document |
+| Tool                          | Description                                   |
+| ----------------------------- | --------------------------------------------- |
+| `readDocument`                | Read content as plain text, JSON, or markdown |
+| `appendText`                  | Append text to a document                     |
+| `insertText`                  | Insert text at a specific position            |
+| `deleteRange`                 | Remove content by index range                 |
+| `listDocumentTabs`            | List all tabs in a multi-tab document         |
 | `replaceDocumentWithMarkdown` | Replace entire document content from markdown |
-| `appendMarkdownToGoogleDoc` | Append markdown-formatted content |
-| `applyTextStyle` | Bold, italic, colors, font size, links |
-| `applyParagraphStyle` | Alignment, spacing, indentation |
-| `insertTable` | Create tables |
-| `insertPageBreak` | Insert page breaks |
-| `insertImage` | Insert images from URLs or local files |
+| `appendMarkdownToGoogleDoc`   | Append markdown-formatted content             |
+| `applyTextStyle`              | Bold, italic, colors, font size, links        |
+| `applyParagraphStyle`         | Alignment, spacing, indentation               |
+| `insertTable`                 | Create tables                                 |
+| `insertPageBreak`             | Insert page breaks                            |
+| `insertImage`                 | Insert images from URLs or local files        |
 
 ### Comments
 
-| Tool | Description |
-|------|-------------|
-| `listComments` | View all comments with author and date |
-| `getComment` | Get a specific comment with replies |
-| `addComment` | Create a comment anchored to text |
-| `replyToComment` | Reply to an existing comment |
-| `resolveComment` | Mark a comment as resolved |
-| `deleteComment` | Remove a comment |
+| Tool             | Description                            |
+| ---------------- | -------------------------------------- |
+| `listComments`   | View all comments with author and date |
+| `getComment`     | Get a specific comment with replies    |
+| `addComment`     | Create a comment anchored to text      |
+| `replyToComment` | Reply to an existing comment           |
+| `resolveComment` | Mark a comment as resolved             |
+| `deleteComment`  | Remove a comment                       |
 
 ### Google Sheets
 
-| Tool | Description |
-|------|-------------|
-| `readSpreadsheet` | Read data from a range (A1 notation) |
-| `writeSpreadsheet` | Write data to a range |
-| `appendSpreadsheetRows` | Add rows to a sheet |
-| `clearSpreadsheetRange` | Clear cell values |
-| `createSpreadsheet` | Create a new spreadsheet |
-| `addSpreadsheetSheet` | Add a sheet/tab |
-| `getSpreadsheetInfo` | Get metadata and sheet list |
-| `listGoogleSheets` | Find spreadsheets |
-| `formatCells` | Bold, colors, alignment on cell ranges |
-| `freezeRowsAndColumns` | Pin header rows/columns |
-| `setDropdownValidation` | Add/remove dropdown lists on cells |
+| Tool                    | Description                            |
+| ----------------------- | -------------------------------------- |
+| `readSpreadsheet`       | Read data from a range (A1 notation)   |
+| `writeSpreadsheet`      | Write data to a range                  |
+| `appendSpreadsheetRows` | Add rows to a sheet                    |
+| `clearSpreadsheetRange` | Clear cell values                      |
+| `createSpreadsheet`     | Create a new spreadsheet               |
+| `addSpreadsheetSheet`   | Add a sheet/tab                        |
+| `getSpreadsheetInfo`    | Get metadata and sheet list            |
+| `listGoogleSheets`      | Find spreadsheets                      |
+| `formatCells`           | Bold, colors, alignment on cell ranges |
+| `freezeRowsAndColumns`  | Pin header rows/columns                |
+| `setDropdownValidation` | Add/remove dropdown lists on cells     |
 
 ### Google Drive
 
-| Tool | Description |
-|------|-------------|
-| `listDocuments` | List documents, optionally filtered by date |
-| `searchGoogleDocs` | Search by name or content |
-| `getDocumentInfo` | Get document metadata |
-| `createDocument` | Create a new document |
-| `createFromTemplate` | Create from an existing template |
-| `createFolder` | Create a folder |
-| `listFolderContents` | List folder contents |
-| `getFolderInfo` | Get folder metadata |
-| `moveFile` | Move a file to another folder |
-| `copyFile` | Duplicate a file |
-| `renameFile` | Rename a file |
-| `deleteFile` | Move to trash or permanently delete |
+| Tool                 | Description                                 |
+| -------------------- | ------------------------------------------- |
+| `listDocuments`      | List documents, optionally filtered by date |
+| `searchGoogleDocs`   | Search by name or content                   |
+| `getDocumentInfo`    | Get document metadata                       |
+| `createDocument`     | Create a new document                       |
+| `createFromTemplate` | Create from an existing template            |
+| `createFolder`       | Create a folder                             |
+| `listFolderContents` | List folder contents                        |
+| `getFolderInfo`      | Get folder metadata                         |
+| `moveFile`           | Move a file to another folder               |
+| `copyFile`           | Duplicate a file                            |
+| `renameFile`         | Rename a file                               |
+| `deleteFile`         | Move to trash or permanently delete         |
 
 ---
 
@@ -166,18 +166,18 @@ Supported: headings, bold, italic, strikethrough, links, bullet/numbered lists, 
 
 Pass your Google Cloud OAuth client credentials as environment variables:
 
-| Variable | Description |
-|----------|-------------|
-| `GOOGLE_CLIENT_ID` | OAuth client ID from Google Cloud Console |
+| Variable               | Description                                   |
+| ---------------------- | --------------------------------------------- |
+| `GOOGLE_CLIENT_ID`     | OAuth client ID from Google Cloud Console     |
 | `GOOGLE_CLIENT_SECRET` | OAuth client secret from Google Cloud Console |
 
 ### Service Account (Enterprise)
 
 For Google Workspace with domain-wide delegation:
 
-| Variable | Description |
-|----------|-------------|
-| `SERVICE_ACCOUNT_PATH` | Path to the service account JSON key file |
+| Variable                  | Description                                 |
+| ------------------------- | ------------------------------------------- |
+| `SERVICE_ACCOUNT_PATH`    | Path to the service account JSON key file   |
 | `GOOGLE_IMPERSONATE_USER` | Email of the user to impersonate (optional) |
 
 ```json

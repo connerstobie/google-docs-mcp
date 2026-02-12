@@ -10,14 +10,16 @@ export function register(server: FastMCP) {
   server.addTool({
     name: 'insertText',
     description:
-      'Inserts text at a specific character index within a document. Use readDocument with format=\'json\' to determine the correct index.',
+      "Inserts text at a specific character index within a document. Use readDocument with format='json' to determine the correct index.",
     parameters: DocumentIdParameter.extend({
       text: z.string().min(1).describe('The text to insert.'),
       index: z
         .number()
         .int()
         .min(1)
-        .describe('1-based character index within the document body. Use readDocument with format=\'json\' to inspect indices.'),
+        .describe(
+          "1-based character index within the document body. Use readDocument with format='json' to inspect indices."
+        ),
       tabId: z
         .string()
         .optional()
@@ -40,9 +42,7 @@ export function register(server: FastMCP) {
           });
           const targetTab = GDocsHelpers.findTabById(docInfo.data, args.tabId);
           if (!targetTab) {
-            throw new UserError(
-              `Tab with ID "${args.tabId}" not found in document.`
-            );
+            throw new UserError(`Tab with ID "${args.tabId}" not found in document.`);
           }
           if (!targetTab.documentTab) {
             throw new UserError(
@@ -55,27 +55,16 @@ export function register(server: FastMCP) {
           const request: docs_v1.Schema$Request = {
             insertText: { location, text: args.text },
           };
-          await GDocsHelpers.executeBatchUpdate(docs, args.documentId, [
-            request,
-          ]);
+          await GDocsHelpers.executeBatchUpdate(docs, args.documentId, [request]);
         } else {
           // Use existing helper for backward compatibility
-          await GDocsHelpers.insertText(
-            docs,
-            args.documentId,
-            args.text,
-            args.index
-          );
+          await GDocsHelpers.insertText(docs, args.documentId, args.text, args.index);
         }
         return `Successfully inserted text at index ${args.index}${args.tabId ? ` in tab ${args.tabId}` : ''}.`;
       } catch (error: any) {
-        log.error(
-          `Error inserting text in doc ${args.documentId}: ${error.message || error}`
-        );
+        log.error(`Error inserting text in doc ${args.documentId}: ${error.message || error}`);
         if (error instanceof UserError) throw error;
-        throw new UserError(
-          `Failed to insert text: ${error.message || 'Unknown error'}`
-        );
+        throw new UserError(`Failed to insert text: ${error.message || 'Unknown error'}`);
       }
     },
   });

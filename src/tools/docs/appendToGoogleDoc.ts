@@ -9,7 +9,8 @@ import * as GDocsHelpers from '../../googleDocsApiHelpers.js';
 export function register(server: FastMCP) {
   server.addTool({
     name: 'appendText',
-    description: 'Appends plain text to the end of a document. For formatted content, use appendMarkdown instead.',
+    description:
+      'Appends plain text to the end of a document. For formatted content, use appendMarkdown instead.',
     parameters: DocumentIdParameter.extend({
       text: z.string().min(1).describe('The plain text to append to the end of the document.'),
       addNewlineIfNeeded: z
@@ -40,9 +41,7 @@ export function register(server: FastMCP) {
         const docInfo = await docs.documents.get({
           documentId: args.documentId,
           includeTabsContent: needsTabsContent,
-          fields: needsTabsContent
-            ? 'tabs'
-            : 'body(content(endIndex)),documentStyle(pageSize)',
+          fields: needsTabsContent ? 'tabs' : 'body(content(endIndex)),documentStyle(pageSize)',
         });
 
         let endIndex = 1;
@@ -52,9 +51,7 @@ export function register(server: FastMCP) {
         if (args.tabId) {
           const targetTab = GDocsHelpers.findTabById(docInfo.data, args.tabId);
           if (!targetTab) {
-            throw new UserError(
-              `Tab with ID "${args.tabId}" not found in document.`
-            );
+            throw new UserError(`Tab with ID "${args.tabId}" not found in document.`);
           }
           if (!targetTab.documentTab) {
             throw new UserError(
@@ -74,9 +71,7 @@ export function register(server: FastMCP) {
         }
 
         // Simpler approach: Always assume insertion is needed unless explicitly told not to add newline
-        const textToInsert =
-          (args.addNewlineIfNeeded && endIndex > 1 ? '\n' : '') +
-          args.text;
+        const textToInsert = (args.addNewlineIfNeeded && endIndex > 1 ? '\n' : '') + args.text;
 
         if (!textToInsert) return 'Nothing to append.';
 
@@ -95,14 +90,10 @@ export function register(server: FastMCP) {
         );
         return `Successfully appended text to ${args.tabId ? `tab ${args.tabId} in ` : ''}document ${args.documentId}.`;
       } catch (error: any) {
-        log.error(
-          `Error appending to doc ${args.documentId}: ${error.message || error}`
-        );
+        log.error(`Error appending to doc ${args.documentId}: ${error.message || error}`);
         if (error instanceof UserError) throw error;
         if (error instanceof NotImplementedError) throw error;
-        throw new UserError(
-          `Failed to append to doc: ${error.message || 'Unknown error'}`
-        );
+        throw new UserError(`Failed to append to doc: ${error.message || 'Unknown error'}`);
       }
     },
   });

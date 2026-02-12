@@ -28,7 +28,9 @@ export function hexToRgbColor(hex: string): docs_v1.Schema$RgbColor | null {
 // --- Zod Schema Fragments for Reusability ---
 
 export const DocumentIdParameter = z.object({
-  documentId: z.string().describe('The document ID — the long string between /d/ and /edit in a Google Docs URL.'),
+  documentId: z
+    .string()
+    .describe('The document ID — the long string between /d/ and /edit in a Google Docs URL.'),
 });
 
 export const RangeParameters = z

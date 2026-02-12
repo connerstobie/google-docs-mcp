@@ -25,7 +25,9 @@ export function register(server: FastMCP) {
           .int()
           .min(0)
           .optional()
-          .describe('Number of rows to freeze from the top (e.g., 1 for a header row). Set to 0 to unfreeze rows.'),
+          .describe(
+            'Number of rows to freeze from the top (e.g., 1 for a header row). Set to 0 to unfreeze rows.'
+          ),
         frozenColumns: z
           .number()
           .int()
@@ -53,7 +55,9 @@ export function register(server: FastMCP) {
 
         const parts: string[] = [];
         if (args.frozenRows !== undefined) {
-          parts.push(args.frozenRows === 0 ? 'unfroze rows' : `froze top ${args.frozenRows} row(s)`);
+          parts.push(
+            args.frozenRows === 0 ? 'unfroze rows' : `froze top ${args.frozenRows} row(s)`
+          );
         }
         if (args.frozenColumns !== undefined) {
           parts.push(
@@ -67,9 +71,7 @@ export function register(server: FastMCP) {
       } catch (error: any) {
         log.error(`Error freezing rows/columns: ${error.message || error}`);
         if (error instanceof UserError) throw error;
-        throw new UserError(
-          `Failed to freeze rows/columns: ${error.message || 'Unknown error'}`
-        );
+        throw new UserError(`Failed to freeze rows/columns: ${error.message || 'Unknown error'}`);
       }
     },
   });

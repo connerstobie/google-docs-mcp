@@ -12,10 +12,7 @@ export function register(server: FastMCP) {
     description:
       'Appends formatted content to the end of a document using markdown syntax. Supports headings, bold, italic, strikethrough, links, and bullet/numbered lists. Use this instead of appendText when you need formatting.',
     parameters: DocumentIdParameter.extend({
-      markdown: z
-        .string()
-        .min(1)
-        .describe('The markdown content to append.'),
+      markdown: z.string().min(1).describe('The markdown content to append.'),
       addNewlineIfNeeded: z
         .boolean()
         .optional()
@@ -54,9 +51,7 @@ export function register(server: FastMCP) {
         if (args.tabId) {
           const targetTab = GDocsHelpers.findTabById(doc.data, args.tabId);
           if (!targetTab) {
-            throw new UserError(
-              `Tab with ID "${args.tabId}" not found in document.`
-            );
+            throw new UserError(`Tab with ID "${args.tabId}" not found in document.`);
           }
           if (!targetTab.documentTab) {
             throw new UserError(
@@ -105,15 +100,10 @@ export function register(server: FastMCP) {
         return `Successfully appended ${args.markdown.length} characters of markdown.\n\n${debugSummary}`;
       } catch (error: any) {
         log.error(`Error appending markdown: ${error.message}`);
-        if (
-          error instanceof UserError ||
-          error instanceof MarkdownConversionError
-        ) {
+        if (error instanceof UserError || error instanceof MarkdownConversionError) {
           throw error;
         }
-        throw new UserError(
-          `Failed to append markdown: ${error.message}`
-        );
+        throw new UserError(`Failed to append markdown: ${error.message}`);
       }
     },
   });

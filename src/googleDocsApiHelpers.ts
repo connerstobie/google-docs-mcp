@@ -200,9 +200,21 @@ export async function executeBatchUpdateWithSplitting(
   return {
     totalRequests: requests.length,
     phases: {
-      delete: { requests: deleteRequests.length, apiCalls: Math.ceil(deleteRequests.length / MAX_BATCH) || 0, elapsedMs: Math.round(deleteElapsed) },
-      insert: { requests: insertRequests.length, apiCalls: Math.ceil(insertRequests.length / MAX_BATCH) || 0, elapsedMs: Math.round(insertElapsed) },
-      format: { requests: formatRequests.length, apiCalls: Math.ceil(formatRequests.length / MAX_BATCH) || 0, elapsedMs: Math.round(formatElapsed) },
+      delete: {
+        requests: deleteRequests.length,
+        apiCalls: Math.ceil(deleteRequests.length / MAX_BATCH) || 0,
+        elapsedMs: Math.round(deleteElapsed),
+      },
+      insert: {
+        requests: insertRequests.length,
+        apiCalls: Math.ceil(insertRequests.length / MAX_BATCH) || 0,
+        elapsedMs: Math.round(insertElapsed),
+      },
+      format: {
+        requests: formatRequests.length,
+        apiCalls: Math.ceil(formatRequests.length / MAX_BATCH) || 0,
+        elapsedMs: Math.round(formatElapsed),
+      },
     },
     totalApiCalls,
     totalElapsedMs: Math.round(totalElapsedMs),

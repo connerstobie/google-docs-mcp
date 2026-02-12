@@ -6,7 +6,8 @@ import { getDriveClient } from '../../clients.js';
 export function register(server: FastMCP) {
   server.addTool({
     name: 'listDocuments',
-    description: 'Lists Google Documents in your Drive, optionally filtered by name or content. Use modifiedAfter to find recently changed documents.',
+    description:
+      'Lists Google Documents in your Drive, optionally filtered by name or content. Use modifiedAfter to find recently changed documents.',
     parameters: z.object({
       maxResults: z
         .number()

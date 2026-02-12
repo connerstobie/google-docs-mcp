@@ -8,7 +8,8 @@ import { DocumentIdParameter } from '../../../types.js';
 export function register(server: FastMCP) {
   server.addTool({
     name: 'getComment',
-    description: 'Gets a specific comment and its full reply thread. Use listComments first to find the comment ID.',
+    description:
+      'Gets a specific comment and its full reply thread. Use listComments first to find the comment ID.',
     parameters: DocumentIdParameter.extend({
       commentId: z.string().describe('The ID of the comment to retrieve'),
     }),
@@ -26,20 +27,24 @@ export function register(server: FastMCP) {
         });
 
         const comment = response.data;
-        return JSON.stringify({
-          id: comment.id,
-          author: comment.author?.displayName || null,
-          content: comment.content,
-          quotedText: comment.quotedFileContent?.value || null,
-          resolved: comment.resolved || false,
-          createdTime: comment.createdTime,
-          replies: (comment.replies || []).map((r: any) => ({
-            id: r.id,
-            author: r.author?.displayName || null,
-            content: r.content,
-            createdTime: r.createdTime,
-          })),
-        }, null, 2);
+        return JSON.stringify(
+          {
+            id: comment.id,
+            author: comment.author?.displayName || null,
+            content: comment.content,
+            quotedText: comment.quotedFileContent?.value || null,
+            resolved: comment.resolved || false,
+            createdTime: comment.createdTime,
+            replies: (comment.replies || []).map((r: any) => ({
+              id: r.id,
+              author: r.author?.displayName || null,
+              content: r.content,
+              createdTime: r.createdTime,
+            })),
+          },
+          null,
+          2
+        );
       } catch (error: any) {
         log.error(`Error getting comment: ${error.message || error}`);
         throw new UserError(`Failed to get comment: ${error.message || 'Unknown error'}`);

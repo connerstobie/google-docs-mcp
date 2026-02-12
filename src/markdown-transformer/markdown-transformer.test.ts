@@ -50,7 +50,7 @@ describe('Markdown to Docs Conversion', () => {
 
       const styleReqs = requests.filter((r) => r.updateTextStyle);
       const codeStyleReq = styleReqs.find(
-        (r) => r.updateTextStyle!.textStyle!.weightedFontFamily?.fontFamily === 'Roboto Mono',
+        (r) => r.updateTextStyle!.textStyle!.weightedFontFamily?.fontFamily === 'Roboto Mono'
       );
       expect(codeStyleReq).toBeDefined();
     });
@@ -74,9 +74,7 @@ describe('Markdown to Docs Conversion', () => {
     it('should convert H1', () => {
       const requests = convertMarkdownToRequests('# Heading 1', 1);
 
-      const insertReq = requests.find(
-        (r) => r.insertText && r.insertText.text === 'Heading 1',
-      );
+      const insertReq = requests.find((r) => r.insertText && r.insertText.text === 'Heading 1');
       expect(insertReq).toBeDefined();
 
       const paraReq = requests.find((r) => r.updateParagraphStyle);
@@ -103,19 +101,24 @@ describe('Markdown to Docs Conversion', () => {
 
   describe('firstHeadingAsTitle option', () => {
     it('should style the first H1 as TITLE when enabled', () => {
-      const requests = convertMarkdownToRequests('# My Document Title\n\nSome body text.', 1, undefined, {
-        firstHeadingAsTitle: true,
-      });
+      const requests = convertMarkdownToRequests(
+        '# My Document Title\n\nSome body text.',
+        1,
+        undefined,
+        {
+          firstHeadingAsTitle: true,
+        }
+      );
 
       const paraReqs = requests.filter((r) => r.updateParagraphStyle);
       const titleReq = paraReqs.find(
-        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'TITLE',
+        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'TITLE'
       );
       expect(titleReq).toBeDefined();
 
       // Should NOT have a HEADING_1
       const h1Req = paraReqs.find(
-        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'HEADING_1',
+        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'HEADING_1'
       );
       expect(h1Req).toBeUndefined();
     });
@@ -128,10 +131,10 @@ describe('Markdown to Docs Conversion', () => {
 
       const paraReqs = requests.filter((r) => r.updateParagraphStyle);
       const titleReqs = paraReqs.filter(
-        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'TITLE',
+        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'TITLE'
       );
       const h1Reqs = paraReqs.filter(
-        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'HEADING_1',
+        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'HEADING_1'
       );
 
       expect(titleReqs).toHaveLength(1);
@@ -154,15 +157,15 @@ describe('Markdown to Docs Conversion', () => {
 
       const paraReqs = requests.filter((r) => r.updateParagraphStyle);
       const titleReqs = paraReqs.filter(
-        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'TITLE',
+        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'TITLE'
       );
       expect(titleReqs).toHaveLength(0);
 
       const h2 = paraReqs.find(
-        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'HEADING_2',
+        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'HEADING_2'
       );
       const h3 = paraReqs.find(
-        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'HEADING_3',
+        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'HEADING_3'
       );
       expect(h2).toBeDefined();
       expect(h3).toBeDefined();
@@ -188,10 +191,10 @@ describe('Markdown to Docs Conversion', () => {
 
       const paraReqs = requests.filter((r) => r.updateParagraphStyle);
       const titleReqs = paraReqs.filter(
-        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'TITLE',
+        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'TITLE'
       );
       const h2Reqs = paraReqs.filter(
-        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'HEADING_2',
+        (r) => r.updateParagraphStyle!.paragraphStyle!.namedStyleType === 'HEADING_2'
       );
 
       expect(titleReqs).toHaveLength(1);
@@ -205,9 +208,7 @@ describe('Markdown to Docs Conversion', () => {
 
       const bulletReqs = requests.filter((r) => r.createParagraphBullets);
       expect(bulletReqs).toHaveLength(1);
-      expect(bulletReqs[0].createParagraphBullets!.bulletPreset).toBe(
-        'BULLET_DISC_CIRCLE_SQUARE',
-      );
+      expect(bulletReqs[0].createParagraphBullets!.bulletPreset).toBe('BULLET_DISC_CIRCLE_SQUARE');
     });
 
     it('should convert numbered lists', () => {
@@ -216,7 +217,7 @@ describe('Markdown to Docs Conversion', () => {
       const bulletReqs = requests.filter((r) => r.createParagraphBullets);
       expect(bulletReqs).toHaveLength(1);
       expect(bulletReqs[0].createParagraphBullets!.bulletPreset).toBe(
-        'NUMBERED_DECIMAL_ALPHA_ROMAN',
+        'NUMBERED_DECIMAL_ALPHA_ROMAN'
       );
     });
 
@@ -299,13 +300,10 @@ describe('Markdown to Docs Conversion', () => {
     });
 
     it('should not let list bullet ranges bleed into following headings', () => {
-      const requests = convertMarkdownToRequests(
-        '- Parent\n  1. Child\n\n## Next Heading',
-        1,
-      );
+      const requests = convertMarkdownToRequests('- Parent\n  1. Child\n\n## Next Heading', 1);
 
       const headingReq = requests.find(
-        (r) => r.updateParagraphStyle?.paragraphStyle?.namedStyleType === 'HEADING_2',
+        (r) => r.updateParagraphStyle?.paragraphStyle?.namedStyleType === 'HEADING_2'
       );
       expect(headingReq).toBeDefined();
       const headingStart = headingReq!.updateParagraphStyle!.range!.startIndex!;
@@ -362,20 +360,15 @@ describe('Markdown to Docs Conversion', () => {
 
   describe('Code Blocks', () => {
     it('should convert fenced code blocks and style them as code', () => {
-      const requests = convertMarkdownToRequests(
-        '```js\nconst x = 1;\nconsole.log(x);\n```',
-        1,
-      );
+      const requests = convertMarkdownToRequests('```js\nconst x = 1;\nconsole.log(x);\n```', 1);
 
       const insertReqs = requests.filter((r) => r.insertText);
       expect(insertReqs.some((r) => r.insertText!.text!.includes('const x = 1;'))).toBe(true);
-      expect(insertReqs.some((r) => r.insertText!.text!.includes('console.log(x);'))).toBe(
-        true,
-      );
+      expect(insertReqs.some((r) => r.insertText!.text!.includes('console.log(x);'))).toBe(true);
 
       const styleReqs = requests.filter((r) => r.updateTextStyle);
       const monospaceReqs = styleReqs.filter(
-        (r) => r.updateTextStyle!.textStyle!.weightedFontFamily?.fontFamily === 'Roboto Mono',
+        (r) => r.updateTextStyle!.textStyle!.weightedFontFamily?.fontFamily === 'Roboto Mono'
       );
       expect(monospaceReqs.length).toBeGreaterThanOrEqual(2);
     });
@@ -402,15 +395,11 @@ More content.`;
       expect(requests.some((r) => r.createParagraphBullets)).toBe(true);
 
       expect(
-        requests.find(
-          (r) => r.updateParagraphStyle?.paragraphStyle?.namedStyleType === 'HEADING_1',
-        ),
+        requests.find((r) => r.updateParagraphStyle?.paragraphStyle?.namedStyleType === 'HEADING_1')
       ).toBeDefined();
 
       expect(
-        requests.find(
-          (r) => r.updateParagraphStyle?.paragraphStyle?.namedStyleType === 'HEADING_2',
-        ),
+        requests.find((r) => r.updateParagraphStyle?.paragraphStyle?.namedStyleType === 'HEADING_2')
       ).toBeDefined();
     });
   });
@@ -476,9 +465,7 @@ More content.`;
     it('should produce a border-bottom paragraph style for ---', () => {
       const requests = convertMarkdownToRequests('Above\n\n---\n\nBelow', 1);
 
-      const hrReqs = requests.filter(
-        (r) => r.updateParagraphStyle?.paragraphStyle?.borderBottom,
-      );
+      const hrReqs = requests.filter((r) => r.updateParagraphStyle?.paragraphStyle?.borderBottom);
       expect(hrReqs).toHaveLength(1);
 
       const border = hrReqs[0].updateParagraphStyle!.paragraphStyle!.borderBottom!;
@@ -490,12 +477,10 @@ More content.`;
     it('should handle multiple horizontal rules', () => {
       const requests = convertMarkdownToRequests(
         '# Title\n\n---\n\n## S1\n\nText.\n\n---\n\n## S2',
-        1,
+        1
       );
 
-      const hrReqs = requests.filter(
-        (r) => r.updateParagraphStyle?.paragraphStyle?.borderBottom,
-      );
+      const hrReqs = requests.filter((r) => r.updateParagraphStyle?.paragraphStyle?.borderBottom);
       expect(hrReqs).toHaveLength(2);
     });
 
@@ -514,19 +499,17 @@ More content.`;
     it('should place the HR paragraph between surrounding content', () => {
       const requests = convertMarkdownToRequests('Above\n\n---\n\nBelow', 1);
 
-      const hrReqs = requests.filter(
-        (r) => r.updateParagraphStyle?.paragraphStyle?.borderBottom,
-      );
+      const hrReqs = requests.filter((r) => r.updateParagraphStyle?.paragraphStyle?.borderBottom);
       expect(hrReqs).toHaveLength(1);
 
       const hrStart = hrReqs[0].updateParagraphStyle!.range!.startIndex!;
       const hrEnd = hrReqs[0].updateParagraphStyle!.range!.endIndex!;
 
       const aboveInsert = requests.find(
-        (r) => r.insertText && r.insertText.text!.includes('Above'),
+        (r) => r.insertText && r.insertText.text!.includes('Above')
       );
       const belowInsert = requests.find(
-        (r) => r.insertText && r.insertText.text!.includes('Below'),
+        (r) => r.insertText && r.insertText.text!.includes('Below')
       );
 
       expect(aboveInsert!.insertText!.location!.index).toBeLessThan(hrStart);
@@ -536,9 +519,7 @@ More content.`;
     it('should include tabId on HR border requests when provided', () => {
       const requests = convertMarkdownToRequests('---', 1, 'tab-abc');
 
-      const hrReqs = requests.filter(
-        (r) => r.updateParagraphStyle?.paragraphStyle?.borderBottom,
-      );
+      const hrReqs = requests.filter((r) => r.updateParagraphStyle?.paragraphStyle?.borderBottom);
       expect(hrReqs.length).toBeGreaterThan(0);
       expect(hrReqs[0].updateParagraphStyle!.range!.tabId).toBe('tab-abc');
     });
@@ -566,45 +547,37 @@ More content.`;
       const requests = convertMarkdownToRequests(markdown, 1);
 
       // HRs
-      const hrReqs = requests.filter(
-        (r) => r.updateParagraphStyle?.paragraphStyle?.borderBottom,
-      );
+      const hrReqs = requests.filter((r) => r.updateParagraphStyle?.paragraphStyle?.borderBottom);
       expect(hrReqs).toHaveLength(2);
 
       // Headings
       const h1Reqs = requests.filter(
-        (r) => r.updateParagraphStyle?.paragraphStyle?.namedStyleType === 'HEADING_1',
+        (r) => r.updateParagraphStyle?.paragraphStyle?.namedStyleType === 'HEADING_1'
       );
       const h2Reqs = requests.filter(
-        (r) => r.updateParagraphStyle?.paragraphStyle?.namedStyleType === 'HEADING_2',
+        (r) => r.updateParagraphStyle?.paragraphStyle?.namedStyleType === 'HEADING_2'
       );
       expect(h1Reqs).toHaveLength(1);
       expect(h2Reqs).toHaveLength(2);
 
       // Bullet lists (merged into one range)
       const bulletReqs = requests.filter(
-        (r) =>
-          r.createParagraphBullets?.bulletPreset === 'BULLET_DISC_CIRCLE_SQUARE',
+        (r) => r.createParagraphBullets?.bulletPreset === 'BULLET_DISC_CIRCLE_SQUARE'
       );
       expect(bulletReqs).toHaveLength(1);
 
       // Numbered list (merged into one range)
       const numberedReqs = requests.filter(
-        (r) =>
-          r.createParagraphBullets?.bulletPreset === 'NUMBERED_DECIMAL_ALPHA_ROMAN',
+        (r) => r.createParagraphBullets?.bulletPreset === 'NUMBERED_DECIMAL_ALPHA_ROMAN'
       );
       expect(numberedReqs).toHaveLength(1);
 
       // Bold
-      const boldReqs = requests.filter(
-        (r) => r.updateTextStyle?.textStyle?.bold === true,
-      );
+      const boldReqs = requests.filter((r) => r.updateTextStyle?.textStyle?.bold === true);
       expect(boldReqs.length).toBeGreaterThanOrEqual(2);
 
       // Italic
-      const italicReqs = requests.filter(
-        (r) => r.updateTextStyle?.textStyle?.italic === true,
-      );
+      const italicReqs = requests.filter((r) => r.updateTextStyle?.textStyle?.italic === true);
       expect(italicReqs.length).toBeGreaterThanOrEqual(1);
 
       // All text present
@@ -745,9 +718,7 @@ describe('Docs to Markdown Conversion', () => {
           content: [
             {
               paragraph: {
-                elements: [
-                  { textRun: { content: 'struck', textStyle: { strikethrough: true } } },
-                ],
+                elements: [{ textRun: { content: 'struck', textStyle: { strikethrough: true } } }],
               },
             },
           ],
@@ -960,10 +931,7 @@ describe('Docs to Markdown Conversion', () => {
         lists: {
           mixed: {
             listProperties: {
-              nestingLevels: [
-                { glyphSymbol: '\u25cf' },
-                { glyphType: 'DECIMAL' },
-              ],
+              nestingLevels: [{ glyphSymbol: '\u25cf' }, { glyphType: 'DECIMAL' }],
             },
           },
         },
@@ -1028,28 +996,20 @@ describe('Docs to Markdown Conversion', () => {
                   {
                     tableCells: [
                       {
-                        content: [
-                          { paragraph: { elements: [{ textRun: { content: 'A\n' } }] } },
-                        ],
+                        content: [{ paragraph: { elements: [{ textRun: { content: 'A\n' } }] } }],
                       },
                       {
-                        content: [
-                          { paragraph: { elements: [{ textRun: { content: 'B\n' } }] } },
-                        ],
+                        content: [{ paragraph: { elements: [{ textRun: { content: 'B\n' } }] } }],
                       },
                     ],
                   },
                   {
                     tableCells: [
                       {
-                        content: [
-                          { paragraph: { elements: [{ textRun: { content: '1\n' } }] } },
-                        ],
+                        content: [{ paragraph: { elements: [{ textRun: { content: '1\n' } }] } }],
                       },
                       {
-                        content: [
-                          { paragraph: { elements: [{ textRun: { content: '2\n' } }] } },
-                        ],
+                        content: [{ paragraph: { elements: [{ textRun: { content: '2\n' } }] } }],
                       },
                     ],
                   },

@@ -108,9 +108,7 @@ async function authorizeWithServiceAccount(): Promise<JWT> {
     });
     await auth.authorize();
     if (impersonateUser) {
-      logger.info(
-        `Service Account authentication successful, impersonating: ${impersonateUser}`
-      );
+      logger.info(`Service Account authentication successful, impersonating: ${impersonateUser}`);
     } else {
       logger.info('Service Account authentication successful!');
     }

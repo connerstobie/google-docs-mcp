@@ -6,7 +6,8 @@ import { DocumentIdParameter } from '../../types.js';
 export function register(server: FastMCP) {
   server.addTool({
     name: 'getDocumentInfo',
-    description: 'Gets metadata about a document including its name, owner, sharing status, and modification history.',
+    description:
+      'Gets metadata about a document including its name, owner, sharing status, and modification history.',
     parameters: DocumentIdParameter,
     execute: async (args, { log }) => {
       const drive = await getDriveClient();

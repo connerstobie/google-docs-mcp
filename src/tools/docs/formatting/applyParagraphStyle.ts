@@ -122,9 +122,7 @@ export function register(server: FastMCP) {
         if (error instanceof NotImplementedError) throw error;
 
         // Provide a more helpful error message
-        throw new UserError(
-          `Failed to apply paragraph style: ${error.message || 'Unknown error'}`
-        );
+        throw new UserError(`Failed to apply paragraph style: ${error.message || 'Unknown error'}`);
       }
     },
   });

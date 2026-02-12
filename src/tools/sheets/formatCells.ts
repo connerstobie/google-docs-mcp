@@ -24,10 +24,7 @@ export function register(server: FastMCP) {
         bold: z.boolean().optional().describe('Apply bold text formatting.'),
         italic: z.boolean().optional().describe('Apply italic text formatting.'),
         fontSize: z.number().min(1).optional().describe('Font size in points.'),
-        foregroundColor: z
-          .string()
-          .optional()
-          .describe('Text color as hex (e.g., "#FF0000").'),
+        foregroundColor: z.string().optional().describe('Text color as hex (e.g., "#FF0000").'),
         backgroundColor: z
           .string()
           .optional()

@@ -6,7 +6,8 @@ import { getDriveClient } from '../../clients.js';
 export function register(server: FastMCP) {
   server.addTool({
     name: 'listFolderContents',
-    description: 'Lists files and subfolders within a Drive folder. Use folderId=\'root\' to browse the top-level of the Drive.',
+    description:
+      "Lists files and subfolders within a Drive folder. Use folderId='root' to browse the top-level of the Drive.",
     parameters: z.object({
       folderId: z
         .string()

@@ -7,7 +7,8 @@ import { getDriveClient, getDocsClient } from '../../clients.js';
 export function register(server: FastMCP) {
   server.addTool({
     name: 'createDocument',
-    description: 'Creates a new empty Google Document. Optionally places it in a specific folder and adds initial text content.',
+    description:
+      'Creates a new empty Google Document. Optionally places it in a specific folder and adds initial text content.',
     parameters: z.object({
       title: z.string().min(1).describe('Title for the new document.'),
       parentFolderId: z
@@ -16,7 +17,10 @@ export function register(server: FastMCP) {
         .describe(
           'ID of folder where document should be created. If not provided, creates in Drive root.'
         ),
-      initialContent: z.string().optional().describe('Initial text content to add to the document.'),
+      initialContent: z
+        .string()
+        .optional()
+        .describe('Initial text content to add to the document.'),
     }),
     execute: async (args, { log }) => {
       const drive = await getDriveClient();
@@ -62,14 +66,19 @@ export function register(server: FastMCP) {
           }
         }
 
-        return JSON.stringify({
-          id: document.id,
-          name: document.name,
-          url: document.webViewLink,
-        }, null, 2);
+        return JSON.stringify(
+          {
+            id: document.id,
+            name: document.name,
+            url: document.webViewLink,
+          },
+          null,
+          2
+        );
       } catch (error: any) {
         log.error(`Error creating document: ${error.message || error}`);
-        if (error.code === 404) throw new UserError('Parent folder not found. Check the folder ID.');
+        if (error.code === 404)
+          throw new UserError('Parent folder not found. Check the folder ID.');
         if (error.code === 403)
           throw new UserError(
             'Permission denied. Make sure you have write access to the destination folder.'
