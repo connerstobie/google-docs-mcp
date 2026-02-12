@@ -19,7 +19,9 @@ export function register(server: FastMCP) {
       let startIndex: number | undefined;
       let endIndex: number | undefined;
 
-      log.info(`Applying paragraph style to document ${args.documentId}`);
+      log.info(
+        `Applying paragraph style to document ${args.documentId}${args.tabId ? ` (tab: ${args.tabId})` : ''}`
+      );
       log.info(`Style options: ${JSON.stringify(args.style)}`);
       log.info(`Target specification: ${JSON.stringify(args.target)}`);
 
@@ -28,17 +30,20 @@ export function register(server: FastMCP) {
         if ('textToFind' in args.target) {
           // Find the text first
           log.info(
-            `Finding text "${args.target.textToFind}" (instance ${args.target.matchInstance || 1})`
+            `Finding text "${args.target.textToFind}" (instance ${args.target.matchInstance || 1})${args.tabId ? ` in tab ${args.tabId}` : ''}`
           );
           const textRange = await GDocsHelpers.findTextRange(
             docs,
             args.documentId,
             args.target.textToFind,
-            args.target.matchInstance || 1
+            args.target.matchInstance || 1,
+            args.tabId
           );
 
           if (!textRange) {
-            throw new UserError(`Could not find "${args.target.textToFind}" in the document.`);
+            throw new UserError(
+              `Could not find "${args.target.textToFind}" in the document${args.tabId ? ` (tab: ${args.tabId})` : ''}.`
+            );
           }
 
           log.info(
@@ -49,7 +54,8 @@ export function register(server: FastMCP) {
           const paragraphRange = await GDocsHelpers.getParagraphRange(
             docs,
             args.documentId,
-            textRange.startIndex
+            textRange.startIndex,
+            args.tabId
           );
 
           if (!paragraphRange) {
@@ -61,16 +67,19 @@ export function register(server: FastMCP) {
           log.info(`Text is contained within paragraph at range ${startIndex}-${endIndex}`);
         } else if ('indexWithinParagraph' in args.target) {
           // Find paragraph containing the specified index
-          log.info(`Finding paragraph containing index ${args.target.indexWithinParagraph}`);
+          log.info(
+            `Finding paragraph containing index ${args.target.indexWithinParagraph}${args.tabId ? ` in tab ${args.tabId}` : ''}`
+          );
           const paragraphRange = await GDocsHelpers.getParagraphRange(
             docs,
             args.documentId,
-            args.target.indexWithinParagraph
+            args.target.indexWithinParagraph,
+            args.tabId
           );
 
           if (!paragraphRange) {
             throw new UserError(
-              `Could not find paragraph containing index ${args.target.indexWithinParagraph}.`
+              `Could not find paragraph containing index ${args.target.indexWithinParagraph}${args.tabId ? ` in tab ${args.tabId}` : ''}.`
             );
           }
 
@@ -102,7 +111,8 @@ export function register(server: FastMCP) {
         const requestInfo = GDocsHelpers.buildUpdateParagraphStyleRequest(
           startIndex,
           endIndex,
-          args.style
+          args.style,
+          args.tabId
         );
 
         if (!requestInfo) {
@@ -112,7 +122,7 @@ export function register(server: FastMCP) {
         log.info(`Applying styles: ${requestInfo.fields.join(', ')}`);
         await GDocsHelpers.executeBatchUpdate(docs, args.documentId, [requestInfo.request]);
 
-        return `Successfully applied paragraph styles (${requestInfo.fields.join(', ')}) to the paragraph.`;
+        return `Successfully applied paragraph styles (${requestInfo.fields.join(', ')}) to the paragraph${args.tabId ? ` in tab ${args.tabId}` : ''}.`;
       } catch (error: any) {
         // Detailed error logging
         log.error(`Error applying paragraph style in doc ${args.documentId}:`);

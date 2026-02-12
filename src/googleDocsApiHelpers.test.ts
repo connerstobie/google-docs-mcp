@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { findTextRange, getTableCellRange } from './googleDocsApiHelpers.js';
+import { findTextRange, getTableCellRange, getParagraphRange } from './googleDocsApiHelpers.js';
 
 describe('Text Range Finding', () => {
   describe('findTextRange', () => {
@@ -103,6 +103,143 @@ describe('Text Range Finding', () => {
       expect(result).toBeNull();
     });
 
+    it('should find text in a specific tab when tabId is provided', async () => {
+      const mockDocs = {
+        documents: {
+          get: vi.fn(async () => ({
+            data: {
+              tabs: [
+                {
+                  tabProperties: { tabId: 'tab1' },
+                  documentTab: {
+                    body: {
+                      content: [
+                        {
+                          paragraph: {
+                            elements: [
+                              {
+                                startIndex: 1,
+                                endIndex: 20,
+                                textRun: { content: 'Tab 1 content here' },
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+                {
+                  tabProperties: { tabId: 'tab2' },
+                  documentTab: {
+                    body: {
+                      content: [
+                        {
+                          paragraph: {
+                            elements: [
+                              {
+                                startIndex: 1,
+                                endIndex: 25,
+                                textRun: { content: 'Meeting Notes are here.' },
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              ],
+            },
+          })),
+        },
+      };
+
+      // Search in tab2 where "Meeting Notes" exists
+      const result = await findTextRange(mockDocs as any, 'doc123', 'Meeting Notes', 1, 'tab2');
+      expect(result).toEqual({ startIndex: 1, endIndex: 14 });
+
+      // Verify includeTabsContent was used
+      expect(mockDocs.documents.get).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentId: 'doc123',
+          includeTabsContent: true,
+        })
+      );
+    });
+
+    it('should throw UserError when tabId is not found', async () => {
+      const mockDocs = {
+        documents: {
+          get: vi.fn(async () => ({
+            data: {
+              tabs: [
+                {
+                  tabProperties: { tabId: 'tab1' },
+                  documentTab: {
+                    body: {
+                      content: [
+                        {
+                          paragraph: {
+                            elements: [
+                              {
+                                startIndex: 1,
+                                endIndex: 10,
+                                textRun: { content: 'Some text' },
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              ],
+            },
+          })),
+        },
+      };
+
+      await expect(
+        findTextRange(mockDocs as any, 'doc123', 'test', 1, 'nonexistent')
+      ).rejects.toThrow('Tab with ID "nonexistent" not found in document.');
+    });
+
+    it('should not use includeTabsContent when no tabId is provided', async () => {
+      const mockDocs = {
+        documents: {
+          get: vi.fn(async () => ({
+            data: {
+              body: {
+                content: [
+                  {
+                    paragraph: {
+                      elements: [
+                        {
+                          startIndex: 1,
+                          endIndex: 25,
+                          textRun: { content: 'This is a test sentence.' },
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            },
+          })),
+        },
+      };
+
+      await findTextRange(mockDocs as any, 'doc123', 'test', 1);
+
+      // Should NOT include includeTabsContent
+      expect(mockDocs.documents.get).toHaveBeenCalledWith(
+        expect.not.objectContaining({
+          includeTabsContent: true,
+        })
+      );
+    });
+
     it('should handle text spanning multiple text runs', async () => {
       const mockDocs = {
         documents: {
@@ -140,6 +277,133 @@ describe('Text Range Finding', () => {
 
       const result = await findTextRange(mockDocs as any, 'doc123', 'a test', 1);
       expect(result).toEqual({ startIndex: 9, endIndex: 15 });
+    });
+  });
+});
+
+describe('Paragraph Range Finding', () => {
+  describe('getParagraphRange', () => {
+    it('should find paragraph containing index in a specific tab', async () => {
+      const mockDocs = {
+        documents: {
+          get: vi.fn(async () => ({
+            data: {
+              tabs: [
+                {
+                  tabProperties: { tabId: 'tab1' },
+                  documentTab: {
+                    body: {
+                      content: [
+                        {
+                          startIndex: 0,
+                          endIndex: 1,
+                          sectionBreak: {},
+                        },
+                        {
+                          startIndex: 1,
+                          endIndex: 20,
+                          paragraph: {
+                            elements: [
+                              {
+                                startIndex: 1,
+                                endIndex: 20,
+                                textRun: { content: 'First paragraph.\n' },
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+                {
+                  tabProperties: { tabId: 'tab2' },
+                  documentTab: {
+                    body: {
+                      content: [
+                        {
+                          startIndex: 0,
+                          endIndex: 1,
+                          sectionBreak: {},
+                        },
+                        {
+                          startIndex: 1,
+                          endIndex: 25,
+                          paragraph: {
+                            elements: [
+                              {
+                                startIndex: 1,
+                                endIndex: 25,
+                                textRun: { content: 'Tab 2 first paragraph.\n' },
+                              },
+                            ],
+                          },
+                        },
+                        {
+                          startIndex: 25,
+                          endIndex: 50,
+                          paragraph: {
+                            elements: [
+                              {
+                                startIndex: 25,
+                                endIndex: 50,
+                                textRun: { content: 'Tab 2 second paragraph.\n' },
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              ],
+            },
+          })),
+        },
+      };
+
+      // Search for paragraph containing index 30 in tab2
+      const result = await getParagraphRange(mockDocs as any, 'doc123', 30, 'tab2');
+      expect(result).toEqual({ startIndex: 25, endIndex: 50 });
+
+      // Verify includeTabsContent was used
+      expect(mockDocs.documents.get).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentId: 'doc123',
+          includeTabsContent: true,
+        })
+      );
+    });
+
+    it('should throw UserError when tabId is not found', async () => {
+      const mockDocs = {
+        documents: {
+          get: vi.fn(async () => ({
+            data: {
+              tabs: [
+                {
+                  tabProperties: { tabId: 'tab1' },
+                  documentTab: {
+                    body: {
+                      content: [
+                        {
+                          startIndex: 1,
+                          endIndex: 10,
+                          paragraph: {},
+                        },
+                      ],
+                    },
+                  },
+                },
+              ],
+            },
+          })),
+        },
+      };
+
+      await expect(getParagraphRange(mockDocs as any, 'doc123', 5, 'nonexistent')).rejects.toThrow(
+        'Tab with ID "nonexistent" not found in document.'
+      );
     });
   });
 });
