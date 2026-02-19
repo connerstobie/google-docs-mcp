@@ -710,10 +710,15 @@ function handleTableClose(tableState: TableState, context: ConversionContext): v
         const absStart = adjustedIndex + range.startIndex;
         const absEnd = adjustedIndex + range.endIndex;
 
-        if (range.formatting.bold || range.formatting.italic ||
-            range.formatting.strikethrough || range.formatting.code) {
+        if (
+          range.formatting.bold ||
+          range.formatting.italic ||
+          range.formatting.strikethrough ||
+          range.formatting.code
+        ) {
           const styleReq = buildUpdateTextStyleRequest(
-            absStart, absEnd,
+            absStart,
+            absEnd,
             {
               bold: range.formatting.bold,
               italic: range.formatting.italic,
@@ -729,7 +734,8 @@ function handleTableClose(tableState: TableState, context: ConversionContext): v
 
         if (range.formatting.link) {
           const linkReq = buildUpdateTextStyleRequest(
-            absStart, absEnd,
+            absStart,
+            absEnd,
             { linkUrl: range.formatting.link },
             context.tabId
           );
