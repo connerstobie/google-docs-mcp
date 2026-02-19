@@ -16,21 +16,122 @@ There are some minor security observations (not malicious, but worth awareness) 
 
 ## Methodology
 
-The following checks were performed on every source file:
+### Step 1: Manual Full-Read of Every Source File
 
-1. **Full file read** of all 92 files in the repository (TypeScript sources, configs, CI workflows, backup files, HTML docs)
-2. **Pattern search** across the `src/` directory for:
-   - Outbound network calls: `fetch()`, `axios`, `node-fetch`, `got()`, `http.request`, `net.connect`, `WebSocket`
-   - Code execution: `eval()`, `Function()`, `exec()`, `spawn`, `child_process`
-   - Encoding/obfuscation: `btoa`, `atob`, `base64`, `cipher`, `encrypt`, `crypto`, `\\x`, `\\u`, `String.fromCharCode`, `unescape`
-   - Data exfiltration: `upload`, `beacon`, `webhook`, `postMessage`, `.send()`
-   - Timer-based triggers: `setTimeout`, `setInterval`
-   - Server listeners: `createServer`, `.listen()`, `.on()`
-   - Environment variable access: `process.env`
-   - All URLs present in source code
-3. **Dependency audit** of `package.json` for unexpected or malicious packages
-4. **npm script audit** for `preinstall`/`postinstall`/`prebuild`/`postbuild` hooks
-5. **CI pipeline review** of `.github/workflows/*.yml`
+Every file listed in the "File-by-File Analysis" section below was **opened and read in its entirety, line by line**. This was not a sampling or summary — the complete contents of each file were reviewed by the auditor. The following files were fully read:
+
+**Core source files (read completely):**
+- `package.json`, `package-lock.json` (dependency manifest)
+- `src/index.ts` (entry point)
+- `src/auth.ts` (authentication)
+- `src/clients.ts` (API client initialization)
+- `src/logger.ts` (logging utility)
+- `src/types.ts` (type definitions)
+- `src/googleDocsApiHelpers.ts` (Docs API helpers)
+- `src/googleSheetsApiHelpers.ts` (Sheets API helpers)
+
+**Markdown transformer (read completely):**
+- `src/markdown-transformer/index.ts`
+- `src/markdown-transformer/docsToMarkdown.ts`
+- `src/markdown-transformer/markdownToDocs.ts`
+- `src/markdown-transformer/markdown-transformer.test.ts`
+
+**All tool registration barrels (read completely):**
+- `src/tools/index.ts`
+- `src/tools/docs/index.ts`
+- `src/tools/drive/index.ts`
+- `src/tools/sheets/index.ts`
+- `src/tools/utils/index.ts`
+- `src/tools/docs/comments/index.ts`
+- `src/tools/docs/formatting/index.ts`
+
+**All individual tool implementations (read completely):**
+- `src/tools/docs/readGoogleDoc.ts`
+- `src/tools/docs/appendToGoogleDoc.ts`
+- `src/tools/docs/insertText.ts`
+- `src/tools/docs/insertImage.ts`
+- `src/tools/docs/insertTable.ts`
+- `src/tools/docs/insertPageBreak.ts`
+- `src/tools/docs/deleteRange.ts`
+- `src/tools/docs/listDocumentTabs.ts`
+- `src/tools/docs/comments/addComment.ts`
+- `src/tools/docs/comments/getComment.ts`
+- `src/tools/docs/comments/listComments.ts`
+- `src/tools/docs/comments/deleteComment.ts`
+- `src/tools/docs/comments/replyToComment.ts`
+- `src/tools/docs/comments/resolveComment.ts`
+- `src/tools/docs/formatting/applyTextStyle.ts`
+- `src/tools/docs/formatting/applyParagraphStyle.ts`
+- `src/tools/drive/listGoogleDocs.ts`
+- `src/tools/drive/searchGoogleDocs.ts`
+- `src/tools/drive/getDocumentInfo.ts`
+- `src/tools/drive/createDocument.ts`
+- `src/tools/drive/createFolder.ts`
+- `src/tools/drive/createFromTemplate.ts`
+- `src/tools/drive/copyFile.ts`
+- `src/tools/drive/moveFile.ts`
+- `src/tools/drive/renameFile.ts`
+- `src/tools/drive/deleteFile.ts`
+- `src/tools/drive/listFolderContents.ts`
+- `src/tools/drive/getFolderInfo.ts`
+- `src/tools/sheets/readSpreadsheet.ts`
+- `src/tools/sheets/writeSpreadsheet.ts`
+- `src/tools/sheets/appendSpreadsheetRows.ts`
+- `src/tools/sheets/clearSpreadsheetRange.ts`
+- `src/tools/sheets/getSpreadsheetInfo.ts`
+- `src/tools/sheets/addSpreadsheetSheet.ts`
+- `src/tools/sheets/createSpreadsheet.ts`
+- `src/tools/sheets/listGoogleSheets.ts`
+- `src/tools/sheets/formatCells.ts`
+- `src/tools/sheets/freezeRowsAndColumns.ts`
+- `src/tools/sheets/setDropdownValidation.ts`
+- `src/tools/utils/replaceDocumentWithMarkdown.ts`
+- `src/tools/utils/appendMarkdownToGoogleDoc.ts`
+
+**Backup files (read completely):**
+- `src/backup/auth.ts.bak`
+- `src/backup/server.ts.bak`
+
+**Configuration and CI files (read completely):**
+- `tsconfig.json`
+- `vitest.config.ts`
+- `.gitignore`
+- `.prettierrc`, `.prettierignore`
+- `.vscode/settings.json`, `.vscode/extensions.json`
+- `.repomix/bundles.json`
+- `.github/workflows/ci.yml`
+- `.github/workflows/release.yml`
+
+**Documentation (read completely):**
+- `docs/index.html`
+
+**Test files (read completely):**
+- `src/types.test.ts`
+- `src/googleDocsApiHelpers.test.ts`
+
+**Files not read (non-code assets):**
+- `assets/google.docs.mcp.1.gif` (binary image)
+- `google docs mcp.mp4` (binary video)
+- `package-lock.json` (auto-generated lockfile — too large, dependencies verified via `package.json`)
+
+### Step 2: Automated Pattern Search
+
+After the manual read, automated regex searches were run across the entire `src/` directory to catch anything that might have been missed during manual review. These patterns targeted:
+
+- Outbound network calls: `fetch()`, `axios`, `node-fetch`, `got()`, `http.request`, `net.connect`, `WebSocket`
+- Code execution: `eval()`, `Function()`, `exec()`, `spawn`, `child_process`
+- Encoding/obfuscation: `btoa`, `atob`, `base64`, `cipher`, `encrypt`, `crypto`, `\\x`, `\\u`, `String.fromCharCode`, `unescape`
+- Data exfiltration: `upload`, `beacon`, `webhook`, `postMessage`, `.send()`
+- Timer-based triggers: `setTimeout`, `setInterval`
+- Server listeners: `createServer`, `.listen()`, `.on()`
+- Environment variable access: `process.env`
+- All URLs present in source code
+
+### Step 3: Dependency and Build Pipeline Audit
+
+- **Dependency audit** of `package.json` for unexpected or malicious packages
+- **npm script audit** for `preinstall`/`postinstall`/`prebuild`/`postbuild` hooks
+- **CI pipeline review** of `.github/workflows/*.yml`
 
 ---
 
