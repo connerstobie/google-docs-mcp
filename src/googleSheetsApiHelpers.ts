@@ -75,12 +75,14 @@ export function normalizeRange(range: string, sheetName?: string): string {
 export async function readRange(
   sheets: Sheets,
   spreadsheetId: string,
-  range: string
+  range: string,
+  valueRenderOption: 'FORMATTED_VALUE' | 'UNFORMATTED_VALUE' | 'FORMULA' = 'FORMATTED_VALUE'
 ): Promise<sheets_v4.Schema$ValueRange> {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range,
+      valueRenderOption,
     });
     return response.data;
   } catch (error: any) {
@@ -585,6 +587,612 @@ export async function setDropdownValidation(
     }
     if (error instanceof UserError) throw error;
     throw new UserError(`Failed to set dropdown validation: ${error.message || 'Unknown error'}`);
+  }
+}
+
+/**
+ * Adds a conditional formatting rule to a spreadsheet range
+ */
+export async function addConditionalFormatRule(
+  sheets: Sheets,
+  spreadsheetId: string,
+  sheetId: number,
+  range: {
+    startRowIndex: number;
+    endRowIndex: number;
+    startColumnIndex: number;
+    endColumnIndex: number;
+  },
+  rule: {
+    type: 'NUMBER_GREATER' | 'NUMBER_LESS' | 'NUMBER_EQ' | 'NUMBER_GREATER_THAN_EQ' | 'NUMBER_LESS_THAN_EQ' | 'TEXT_CONTAINS' | 'TEXT_NOT_CONTAINS' | 'BLANK' | 'NOT_BLANK' | 'CUSTOM_FORMULA';
+    values?: string[];
+    backgroundColor?: { red: number; green: number; blue: number };
+    textColor?: { red: number; green: number; blue: number };
+    bold?: boolean;
+    italic?: boolean;
+  },
+  index: number = 0
+): Promise<sheets_v4.Schema$BatchUpdateSpreadsheetResponse> {
+  try {
+    const format: sheets_v4.Schema$CellFormat = {};
+
+    if (rule.backgroundColor) {
+      format.backgroundColor = {
+        red: rule.backgroundColor.red,
+        green: rule.backgroundColor.green,
+        blue: rule.backgroundColor.blue,
+        alpha: 1,
+      };
+    }
+
+    if (rule.textColor || rule.bold !== undefined || rule.italic !== undefined) {
+      format.textFormat = {};
+      if (rule.textColor) {
+        format.textFormat.foregroundColor = {
+          red: rule.textColor.red,
+          green: rule.textColor.green,
+          blue: rule.textColor.blue,
+          alpha: 1,
+        };
+      }
+      if (rule.bold !== undefined) {
+        format.textFormat.bold = rule.bold;
+      }
+      if (rule.italic !== undefined) {
+        format.textFormat.italic = rule.italic;
+      }
+    }
+
+    const booleanCondition: sheets_v4.Schema$BooleanCondition = {
+      type: rule.type,
+    };
+
+    if (rule.values && rule.values.length > 0) {
+      booleanCondition.values = rule.values.map(v => ({ userEnteredValue: v }));
+    }
+
+    const response = await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            addConditionalFormatRule: {
+              rule: {
+                ranges: [
+                  {
+                    sheetId,
+                    startRowIndex: range.startRowIndex,
+                    endRowIndex: range.endRowIndex,
+                    startColumnIndex: range.startColumnIndex,
+                    endColumnIndex: range.endColumnIndex,
+                  },
+                ],
+                booleanRule: {
+                  condition: booleanCondition,
+                  format,
+                },
+              },
+              index,
+            },
+          },
+        ],
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    if (error.code === 404) {
+      throw new UserError(`Spreadsheet not found (ID: ${spreadsheetId}). Check the ID.`);
+    }
+    if (error.code === 403) {
+      throw new UserError(`Permission denied for spreadsheet (ID: ${spreadsheetId}). Ensure you have write access.`);
+    }
+    throw new UserError(`Failed to add conditional format rule: ${error.message || 'Unknown error'}`);
+  }
+}
+
+/**
+ * Gets all conditional formatting rules for a spreadsheet
+ */
+export async function getConditionalFormatRules(
+  sheets: Sheets,
+  spreadsheetId: string,
+  sheetId?: number
+): Promise<{ sheetId: number; sheetName: string; rules: sheets_v4.Schema$ConditionalFormatRule[] }[]> {
+  try {
+    const response = await sheets.spreadsheets.get({
+      spreadsheetId,
+      includeGridData: false,
+      fields: 'sheets(properties(sheetId,title),conditionalFormats)',
+    });
+
+    const results: { sheetId: number; sheetName: string; rules: sheets_v4.Schema$ConditionalFormatRule[] }[] = [];
+
+    for (const sheet of response.data.sheets || []) {
+      const currentSheetId = sheet.properties?.sheetId;
+      const sheetName = sheet.properties?.title || 'Unknown';
+
+      if (sheetId !== undefined && currentSheetId !== sheetId) {
+        continue;
+      }
+
+      if (currentSheetId != null) {
+        results.push({
+          sheetId: currentSheetId,
+          sheetName,
+          rules: sheet.conditionalFormats || [],
+        });
+      }
+    }
+
+    return results;
+  } catch (error: any) {
+    if (error.code === 404) {
+      throw new UserError(`Spreadsheet not found (ID: ${spreadsheetId}). Check the ID.`);
+    }
+    if (error.code === 403) {
+      throw new UserError(`Permission denied for spreadsheet (ID: ${spreadsheetId}). Ensure you have read access.`);
+    }
+    throw new UserError(`Failed to get conditional format rules: ${error.message || 'Unknown error'}`);
+  }
+}
+
+/**
+ * Deletes a conditional formatting rule by index
+ */
+export async function deleteConditionalFormatRule(
+  sheets: Sheets,
+  spreadsheetId: string,
+  sheetId: number,
+  index: number
+): Promise<sheets_v4.Schema$BatchUpdateSpreadsheetResponse> {
+  try {
+    const response = await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            deleteConditionalFormatRule: {
+              sheetId,
+              index,
+            },
+          },
+        ],
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    if (error.code === 404) {
+      throw new UserError(`Spreadsheet not found (ID: ${spreadsheetId}). Check the ID.`);
+    }
+    if (error.code === 403) {
+      throw new UserError(`Permission denied for spreadsheet (ID: ${spreadsheetId}). Ensure you have write access.`);
+    }
+    throw new UserError(`Failed to delete conditional format rule: ${error.message || 'Unknown error'}`);
+  }
+}
+
+/**
+ * Clears all conditional formatting rules from a sheet
+ */
+export async function clearConditionalFormatRules(
+  sheets: Sheets,
+  spreadsheetId: string,
+  sheetId: number
+): Promise<sheets_v4.Schema$BatchUpdateSpreadsheetResponse> {
+  try {
+    const existingRules = await getConditionalFormatRules(sheets, spreadsheetId, sheetId);
+    const sheetRules = existingRules.find(s => s.sheetId === sheetId);
+
+    if (!sheetRules || sheetRules.rules.length === 0) {
+      return { spreadsheetId };
+    }
+
+    const requests = [];
+    for (let i = sheetRules.rules.length - 1; i >= 0; i--) {
+      requests.push({
+        deleteConditionalFormatRule: {
+          sheetId,
+          index: i,
+        },
+      });
+    }
+
+    const response = await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: { requests },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    if (error.code === 404) {
+      throw new UserError(`Spreadsheet not found (ID: ${spreadsheetId}). Check the ID.`);
+    }
+    if (error.code === 403) {
+      throw new UserError(`Permission denied for spreadsheet (ID: ${spreadsheetId}). Ensure you have write access.`);
+    }
+    if (error instanceof UserError) throw error;
+    throw new UserError(`Failed to clear conditional format rules: ${error.message || 'Unknown error'}`);
+  }
+}
+
+/**
+ * Batch format a spreadsheet with multiple formatting operations in a single API call.
+ */
+export async function batchFormat(
+  sheets: Sheets,
+  spreadsheetId: string,
+  sheetName: string,
+  operations: {
+    cellFormats?: Array<{
+      range: string;
+      fontSize?: number;
+      bold?: boolean;
+      italic?: boolean;
+      fontFamily?: string;
+      fontColor?: string;
+      backgroundColor?: string;
+      horizontalAlignment?: 'LEFT' | 'CENTER' | 'RIGHT';
+      verticalAlignment?: 'TOP' | 'MIDDLE' | 'BOTTOM';
+      numberFormat?: string;
+      wrapStrategy?: 'OVERFLOW_CELL' | 'CLIP' | 'WRAP';
+    }>;
+    columnWidths?: Array<{ column: string; width: number }>;
+    rowHeights?: Array<{ row: number; height: number }>;
+    hideColumns?: { startColumn: string; endColumn: string };
+    merges?: string[];
+    freezeRows?: number;
+    freezeColumns?: number;
+  }
+): Promise<sheets_v4.Schema$BatchUpdateSpreadsheetResponse> {
+  try {
+    const metadata = await getSpreadsheetMetadata(sheets, spreadsheetId);
+    const sheet = metadata.sheets?.find(s => s.properties?.title === sheetName);
+    if (!sheet?.properties?.sheetId && sheet?.properties?.sheetId !== 0) {
+      throw new UserError(`Sheet "${sheetName}" not found in spreadsheet.`);
+    }
+    const sheetId = sheet.properties.sheetId!;
+
+    function colLetterToIndex(col: string): number {
+      let idx = 0;
+      col = col.toUpperCase();
+      for (let i = 0; i < col.length; i++) {
+        idx = idx * 26 + (col.charCodeAt(i) - 64);
+      }
+      return idx - 1;
+    }
+
+    function parseA1Range(a1: string): { startRow: number; endRow: number; startCol: number; endCol: number } {
+      const match = a1.match(/^([A-Z]+)(\d+)(?::([A-Z]+)(\d+))?$/i);
+      if (!match) throw new UserError(`Invalid A1 range: ${a1}`);
+      const startCol = colLetterToIndex(match[1]);
+      const startRow = parseInt(match[2], 10) - 1;
+      const endCol = match[3] ? colLetterToIndex(match[3]) : startCol;
+      const endRow = match[4] ? parseInt(match[4], 10) - 1 : startRow;
+      return { startRow, endRow, startCol, endCol };
+    }
+
+    const requests: sheets_v4.Schema$Request[] = [];
+
+    if (operations.cellFormats) {
+      for (const fmt of operations.cellFormats) {
+        const { startRow, endRow, startCol, endCol } = parseA1Range(fmt.range);
+        const userEnteredFormat: sheets_v4.Schema$CellFormat = {};
+        const fields: string[] = [];
+
+        if (fmt.backgroundColor) {
+          const bg = hexToRgb(fmt.backgroundColor);
+          if (bg) {
+            userEnteredFormat.backgroundColor = { ...bg, alpha: 1 };
+            fields.push('userEnteredFormat.backgroundColor');
+          }
+        }
+
+        const textFormat: sheets_v4.Schema$TextFormat = {};
+        let hasTextFormat = false;
+
+        if (fmt.fontColor) {
+          const fc = hexToRgb(fmt.fontColor);
+          if (fc) {
+            textFormat.foregroundColor = { ...fc, alpha: 1 };
+            hasTextFormat = true;
+            fields.push('userEnteredFormat.textFormat.foregroundColor');
+          }
+        }
+        if (fmt.fontSize !== undefined) {
+          textFormat.fontSize = fmt.fontSize;
+          hasTextFormat = true;
+          fields.push('userEnteredFormat.textFormat.fontSize');
+        }
+        if (fmt.bold !== undefined) {
+          textFormat.bold = fmt.bold;
+          hasTextFormat = true;
+          fields.push('userEnteredFormat.textFormat.bold');
+        }
+        if (fmt.italic !== undefined) {
+          textFormat.italic = fmt.italic;
+          hasTextFormat = true;
+          fields.push('userEnteredFormat.textFormat.italic');
+        }
+        if (fmt.fontFamily) {
+          textFormat.fontFamily = fmt.fontFamily;
+          hasTextFormat = true;
+          fields.push('userEnteredFormat.textFormat.fontFamily');
+        }
+
+        if (hasTextFormat) {
+          userEnteredFormat.textFormat = textFormat;
+        }
+
+        if (fmt.horizontalAlignment) {
+          userEnteredFormat.horizontalAlignment = fmt.horizontalAlignment;
+          fields.push('userEnteredFormat.horizontalAlignment');
+        }
+        if (fmt.verticalAlignment) {
+          userEnteredFormat.verticalAlignment = fmt.verticalAlignment;
+          fields.push('userEnteredFormat.verticalAlignment');
+        }
+        if (fmt.numberFormat) {
+          userEnteredFormat.numberFormat = { type: 'NUMBER', pattern: fmt.numberFormat };
+          fields.push('userEnteredFormat.numberFormat');
+        }
+        if (fmt.wrapStrategy) {
+          userEnteredFormat.wrapStrategy = fmt.wrapStrategy;
+          fields.push('userEnteredFormat.wrapStrategy');
+        }
+
+        if (fields.length > 0) {
+          requests.push({
+            repeatCell: {
+              range: {
+                sheetId,
+                startRowIndex: startRow,
+                endRowIndex: endRow + 1,
+                startColumnIndex: startCol,
+                endColumnIndex: endCol + 1,
+              },
+              cell: { userEnteredFormat },
+              fields: fields.join(','),
+            },
+          });
+        }
+      }
+    }
+
+    if (operations.columnWidths) {
+      for (const cw of operations.columnWidths) {
+        const colIndex = colLetterToIndex(cw.column);
+        requests.push({
+          updateDimensionProperties: {
+            range: { sheetId, dimension: 'COLUMNS', startIndex: colIndex, endIndex: colIndex + 1 },
+            properties: { pixelSize: cw.width },
+            fields: 'pixelSize',
+          },
+        });
+      }
+    }
+
+    if (operations.rowHeights) {
+      for (const rh of operations.rowHeights) {
+        requests.push({
+          updateDimensionProperties: {
+            range: { sheetId, dimension: 'ROWS', startIndex: rh.row - 1, endIndex: rh.row },
+            properties: { pixelSize: rh.height },
+            fields: 'pixelSize',
+          },
+        });
+      }
+    }
+
+    if (operations.hideColumns) {
+      const startCol = colLetterToIndex(operations.hideColumns.startColumn);
+      const endCol = colLetterToIndex(operations.hideColumns.endColumn);
+      requests.push({
+        updateDimensionProperties: {
+          range: { sheetId, dimension: 'COLUMNS', startIndex: startCol, endIndex: endCol + 1 },
+          properties: { hiddenByUser: true },
+          fields: 'hiddenByUser',
+        },
+      });
+    }
+
+    if (operations.merges) {
+      for (const mergeRange of operations.merges) {
+        const { startRow, endRow, startCol, endCol } = parseA1Range(mergeRange);
+        requests.push({
+          mergeCells: {
+            range: {
+              sheetId,
+              startRowIndex: startRow,
+              endRowIndex: endRow + 1,
+              startColumnIndex: startCol,
+              endColumnIndex: endCol + 1,
+            },
+            mergeType: 'MERGE_ALL',
+          },
+        });
+      }
+    }
+
+    if (operations.freezeRows !== undefined || operations.freezeColumns !== undefined) {
+      const gridProperties: sheets_v4.Schema$GridProperties = {};
+      const fields: string[] = [];
+      if (operations.freezeRows !== undefined) {
+        gridProperties.frozenRowCount = operations.freezeRows;
+        fields.push('gridProperties.frozenRowCount');
+      }
+      if (operations.freezeColumns !== undefined) {
+        gridProperties.frozenColumnCount = operations.freezeColumns;
+        fields.push('gridProperties.frozenColumnCount');
+      }
+      requests.push({
+        updateSheetProperties: {
+          properties: { sheetId, gridProperties },
+          fields: fields.join(','),
+        },
+      });
+    }
+
+    if (requests.length === 0) {
+      return { spreadsheetId };
+    }
+
+    const response = await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: { requests },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    if (error.code === 404) {
+      throw new UserError(`Spreadsheet not found (ID: ${spreadsheetId}). Check the ID.`);
+    }
+    if (error.code === 403) {
+      throw new UserError(`Permission denied for spreadsheet (ID: ${spreadsheetId}). Ensure you have write access.`);
+    }
+    if (error instanceof UserError) throw error;
+    throw new UserError(`Failed to batch format: ${error.message || 'Unknown error'}`);
+  }
+}
+
+/**
+ * Deletes rows from a sheet
+ */
+export async function deleteRows(
+  sheets: Sheets,
+  spreadsheetId: string,
+  sheetName: string,
+  startRow: number,
+  endRow: number
+): Promise<sheets_v4.Schema$BatchUpdateSpreadsheetResponse> {
+  try {
+    const metadata = await getSpreadsheetMetadata(sheets, spreadsheetId);
+    const sheet = metadata.sheets?.find(s => s.properties?.title === sheetName);
+
+    if (sheet?.properties?.sheetId == null) {
+      throw new UserError(`Sheet "${sheetName}" not found in spreadsheet.`);
+    }
+
+    const sheetId = sheet.properties.sheetId;
+
+    if (startRow < 1 || endRow < 1) {
+      throw new UserError('Row numbers must be 1-based (minimum 1).');
+    }
+
+    if (startRow > endRow) {
+      throw new UserError('startRow cannot be greater than endRow.');
+    }
+
+    const startIndex = startRow - 1;
+    const endIndex = endRow;
+
+    const response = await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: { sheetId, dimension: 'ROWS', startIndex, endIndex },
+            },
+          },
+        ],
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    if (error.code === 404) {
+      throw new UserError(`Spreadsheet not found (ID: ${spreadsheetId}). Check the ID.`);
+    }
+    if (error.code === 403) {
+      throw new UserError(`Permission denied for spreadsheet (ID: ${spreadsheetId}). Ensure you have write access.`);
+    }
+    if (error instanceof UserError) throw error;
+    throw new UserError(`Failed to delete rows: ${error.message || 'Unknown error'}`);
+  }
+}
+
+/**
+ * Gets data validation rules for a range of cells.
+ */
+export async function getDataValidation(
+  sheets: Sheets,
+  spreadsheetId: string,
+  range: string
+): Promise<{
+  range: string;
+  validations: Array<{
+    cell: string;
+    condition?: { type: string; values: string[] };
+    inputMessage?: string;
+    strict?: boolean;
+    showCustomUi?: boolean;
+  }>;
+}> {
+  try {
+    const response = await sheets.spreadsheets.get({
+      spreadsheetId,
+      ranges: [range],
+      includeGridData: true,
+      fields: 'sheets(properties(title,sheetId),data(startRow,startColumn,rowData(values(dataValidation,formattedValue))))',
+    });
+
+    const validations: Array<{
+      cell: string;
+      condition?: { type: string; values: string[] };
+      inputMessage?: string;
+      strict?: boolean;
+      showCustomUi?: boolean;
+    }> = [];
+
+    const sheetData = response.data.sheets?.[0];
+    const gridData = sheetData?.data?.[0];
+
+    if (!gridData?.rowData) {
+      return { range, validations };
+    }
+
+    const startRow = gridData.startRow ?? 0;
+    const startCol = gridData.startColumn ?? 0;
+
+    for (let rowIdx = 0; rowIdx < gridData.rowData.length; rowIdx++) {
+      const row = gridData.rowData[rowIdx];
+      if (!row.values) continue;
+
+      for (let colIdx = 0; colIdx < row.values.length; colIdx++) {
+        const cellData = row.values[colIdx];
+        const cellRef = rowColToA1(startRow + rowIdx, startCol + colIdx);
+
+        if (cellData.dataValidation) {
+          const dv = cellData.dataValidation;
+          const conditionValues = dv.condition?.values?.map(
+            (v) => v.userEnteredValue || v.relativeDate || ''
+          ) ?? [];
+
+          validations.push({
+            cell: cellRef,
+            condition: dv.condition ? {
+              type: dv.condition.type || 'UNKNOWN',
+              values: conditionValues,
+            } : undefined,
+            inputMessage: dv.inputMessage || undefined,
+            strict: dv.strict ?? undefined,
+            showCustomUi: dv.showCustomUi ?? undefined,
+          });
+        }
+      }
+    }
+
+    return { range, validations };
+  } catch (error: any) {
+    if (error.code === 404) {
+      throw new UserError(`Spreadsheet not found (ID: ${spreadsheetId}). Check the ID.`);
+    }
+    if (error.code === 403) {
+      throw new UserError(`Permission denied for spreadsheet (ID: ${spreadsheetId}). Ensure you have read access.`);
+    }
+    throw new UserError(`Failed to get data validation: ${error.message || 'Unknown error'}`);
   }
 }
 
