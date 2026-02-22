@@ -12,7 +12,7 @@ Connect Claude Desktop, Cursor, or any MCP client to your Google Docs, Google Sh
 
 1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
 2. Create or select a project
-3. Enable the **Google Docs API**, **Google Sheets API**, and **Google Drive API**
+3. Enable the **Google Docs API**, **Google Sheets API**, **Google Drive API**, and **Apps Script API**
 4. Configure the **OAuth consent screen** (External, add your email as a test user)
 5. Create an **OAuth client ID** (Desktop app type)
 6. Copy the **Client ID** and **Client Secret** from the confirmation screen
@@ -54,22 +54,24 @@ The server starts automatically when your MCP client needs it.
 
 ## What Can It Do?
 
+**54 tools** across Google Docs, Sheets, Drive, and Apps Script.
+
 ### Google Docs
 
-| Tool                          | Description                                   |
-| ----------------------------- | --------------------------------------------- |
-| `readDocument`                | Read content as plain text, JSON, or markdown |
-| `appendText`                  | Append text to a document                     |
-| `insertText`                  | Insert text at a specific position            |
-| `deleteRange`                 | Remove content by index range                 |
+| Tool                       | Description                                   |
+| -------------------------- | --------------------------------------------- |
+| `readDocument`             | Read content as plain text, JSON, or markdown |
+| `appendText`               | Append plain text to a document               |
+| `insertText`               | Insert text at a specific character index     |
+| `deleteRange`              | Remove content by character index range       |
 | `listDocumentTabs`            | List all tabs in a multi-tab document         |
 | `replaceDocumentWithMarkdown` | Replace entire document content from markdown |
 | `appendMarkdownToGoogleDoc`   | Append markdown-formatted content             |
-| `applyTextStyle`              | Bold, italic, colors, font size, links        |
-| `applyParagraphStyle`         | Alignment, spacing, indentation               |
-| `insertTable`                 | Create tables                                 |
-| `insertPageBreak`             | Insert page breaks                            |
-| `insertImage`                 | Insert images from URLs or local files        |
+| `applyTextStyle`           | Bold, italic, colors, font size, links        |
+| `applyParagraphStyle`      | Alignment, spacing, heading styles            |
+| `insertTable`              | Create tables at a specific position          |
+| `insertPageBreak`          | Insert page breaks                            |
+| `insertImage`              | Insert images from URLs or local files        |
 
 ### Comments
 
@@ -84,36 +86,54 @@ The server starts automatically when your MCP client needs it.
 
 ### Google Sheets
 
-| Tool                    | Description                            |
-| ----------------------- | -------------------------------------- |
-| `readSpreadsheet`       | Read data from a range (A1 notation)   |
-| `writeSpreadsheet`      | Write data to a range                  |
-| `appendSpreadsheetRows` | Add rows to a sheet                    |
-| `clearSpreadsheetRange` | Clear cell values                      |
-| `createSpreadsheet`     | Create a new spreadsheet               |
-| `addSpreadsheetSheet`   | Add a sheet/tab                        |
-| `getSpreadsheetInfo`    | Get metadata and sheet list            |
-| `listGoogleSheets`      | Find spreadsheets                      |
-| `formatCells`           | Bold, colors, alignment on cell ranges |
-| `freezeRowsAndColumns`  | Pin header rows/columns                |
-| `setDropdownValidation` | Add/remove dropdown lists on cells     |
+| Tool                        | Description                                                |
+| --------------------------- | ---------------------------------------------------------- |
+| `readSpreadsheet`           | Read data from a range (A1 notation)                       |
+| `writeSpreadsheet`          | Write data to a range                                      |
+| `appendSpreadsheetRows`     | Add rows after the last row with content                   |
+| `clearSpreadsheetRange`     | Clear cell values (preserves formatting)                   |
+| `createSpreadsheet`         | Create a new spreadsheet                                   |
+| `addSpreadsheetSheet`       | Add a sheet/tab                                            |
+| `getSpreadsheetInfo`        | Get metadata and sheet list                                |
+| `listGoogleSheets`          | Find spreadsheets in Drive                                 |
+| `formatCells`               | Bold, colors, alignment on cell ranges                     |
+| `formatSpreadsheet`         | Batch formatting: fonts, colors, widths, heights, merges   |
+| `freezeRowsAndColumns`      | Pin header rows/columns                                    |
+| `setDropdownValidation`     | Add/remove dropdown lists on cells                         |
+| `getDataValidation`         | Read existing validation rules from cells                  |
+| `getCellFormatting`         | Read cell formatting (fonts, colors, number formats, etc.) |
+| `addConditionalFormatRule`  | Add a conditional formatting rule                          |
+| `getConditionalFormatRules` | List all conditional formatting rules                      |
+| `deleteConditionalFormatRule` | Delete a conditional formatting rule by index            |
+| `clearConditionalFormatRules` | Remove all conditional formatting rules from a sheet     |
+| `deleteSpreadsheetRows`     | Delete rows from a spreadsheet                             |
 
 ### Google Drive
 
-| Tool                 | Description                                 |
-| -------------------- | ------------------------------------------- |
-| `listDocuments`      | List documents, optionally filtered by date |
-| `searchGoogleDocs`   | Search by name or content                   |
-| `getDocumentInfo`    | Get document metadata                       |
-| `createDocument`     | Create a new document                       |
-| `createFromTemplate` | Create from an existing template            |
-| `createFolder`       | Create a folder                             |
-| `listFolderContents` | List folder contents                        |
-| `getFolderInfo`      | Get folder metadata                         |
-| `moveFile`           | Move a file to another folder               |
-| `copyFile`           | Duplicate a file                            |
-| `renameFile`         | Rename a file                               |
-| `deleteFile`         | Move to trash or permanently delete         |
+| Tool                         | Description                                 |
+| ---------------------------- | ------------------------------------------- |
+| `listGoogleDocs`      | List documents, optionally filtered by date |
+| `searchGoogleDocs`    | Search by name or content                   |
+| `getDocumentInfo`     | Get document metadata                       |
+| `createDocument`      | Create a new document                       |
+| `createFromTemplate`  | Create from an existing template            |
+| `createFolder`               | Create a folder                             |
+| `listFolderContents`         | List folder contents                        |
+| `getFolderInfo`              | Get folder metadata                         |
+| `moveFile`                   | Move a file to another folder               |
+| `copyFile`                   | Duplicate a file                            |
+| `renameFile`                 | Rename a file                               |
+| `deleteFile`                 | Move to trash or permanently delete         |
+
+### Google Apps Script
+
+| Tool                    | Description                                       |
+| ----------------------- | ------------------------------------------------- |
+| `getBoundScriptId`      | Find the Apps Script project bound to a file      |
+| `listAppsScriptFiles`   | List all files in an Apps Script project          |
+| `readAppsScriptFile`    | Read source code of an Apps Script file           |
+| `updateAppsScriptFile`  | Update source code of an Apps Script file         |
+| `getAppsScriptMetadata` | Get project metadata (title, timestamps, etc.)    |
 
 ---
 
@@ -138,6 +158,9 @@ The server starts automatically when your MCP client needs it.
 "Format row 1 as bold with a light blue background in spreadsheet XYZ789"
 "Freeze the first row in spreadsheet XYZ789"
 "Add a dropdown with options [Open, In Progress, Done] to range C2:C100"
+"Read the cell formatting from A1:D10 to see fonts and colors"
+"Add a conditional format rule to highlight cells greater than 100 in red"
+"Show me all conditional formatting rules on Sheet1"
 ```
 
 ### Google Drive
@@ -146,6 +169,15 @@ The server starts automatically when your MCP client needs it.
 "List my 10 most recent Google Docs"
 "Search for documents containing 'project proposal'"
 "Create a folder called 'Meeting Notes' and move document ABC123 into it"
+```
+
+### Google Apps Script
+
+```
+"Find the Apps Script project bound to spreadsheet XYZ789"
+"List all files in Apps Script project ABC123"
+"Read the Code.gs file from Apps Script project ABC123"
+"Update the Code.gs file with this new source code"
 ```
 
 ### Markdown Workflow
@@ -215,7 +247,7 @@ OAuth refresh tokens are stored in `~/.config/google-docs-mcp/token.json` (respe
   - Verify `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set in the `env` block of your MCP config.
   - Try running manually: `npx google-docs-mcp` and check stderr for errors.
 - **Authorization errors:**
-  - Ensure Docs, Sheets, and Drive APIs are enabled in Google Cloud Console.
+  - Ensure Docs, Sheets, Drive, and Apps Script APIs are enabled in Google Cloud Console.
   - Confirm your email is listed as a Test User on the OAuth consent screen.
   - Re-authorize: `npx google-docs-mcp auth`
   - Delete `~/.config/google-docs-mcp/token.json` and re-authorize if upgrading.
@@ -234,13 +266,13 @@ OAuth refresh tokens are stored in `~/.config/google-docs-mcp/token.json` (respe
 2. **Create or Select a Project:** Click the project dropdown > "NEW PROJECT". Name it (e.g., "MCP Docs Server") and click "CREATE".
 3. **Enable APIs:**
    - Navigate to "APIs & Services" > "Library"
-   - Search for and enable: **Google Docs API**, **Google Sheets API**, **Google Drive API**
+   - Search for and enable: **Google Docs API**, **Google Sheets API**, **Google Drive API**, **Apps Script API**
 4. **Configure OAuth Consent Screen:**
    - Go to "APIs & Services" > "OAuth consent screen"
    - Choose "External" and click "CREATE"
    - Fill in: App name, User support email, Developer contact email
    - Click "SAVE AND CONTINUE"
-   - Add scopes: `documents`, `spreadsheets`, `drive`
+   - Add scopes: `documents`, `spreadsheets`, `drive`, `script.projects`
    - Click "SAVE AND CONTINUE"
    - Add your Google email as a Test User
    - Click "SAVE AND CONTINUE"
