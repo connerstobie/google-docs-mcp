@@ -26,6 +26,9 @@ import { register as deleteSpreadsheetRows } from './deleteSpreadsheetRows.js';
 // Data validation reading
 import { register as getDataValidation } from './getDataValidation.js';
 
+// Cell formatting reading
+import { register as getCellFormatting } from './getCellFormatting.js';
+
 export function registerSheetsTools(server: FastMCP) {
   readSpreadsheet(server);
   writeSpreadsheet(server);
@@ -53,4 +56,7 @@ export function registerSheetsTools(server: FastMCP) {
 
   // Data validation reading
   getDataValidation(server);
+
+  // Cell formatting reading
+  getCellFormatting(server);
 }

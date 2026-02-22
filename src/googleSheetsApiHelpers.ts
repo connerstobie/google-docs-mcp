@@ -219,6 +219,36 @@ export async function getSpreadsheetMetadata(
 }
 
 /**
+ * Gets cell formatting data for a range using includeGridData
+ */
+export async function getCellFormatting(
+  sheets: Sheets,
+  spreadsheetId: string,
+  range: string
+): Promise<sheets_v4.Schema$Spreadsheet> {
+  try {
+    const response = await sheets.spreadsheets.get({
+      spreadsheetId,
+      ranges: [range],
+      includeGridData: true,
+      fields:
+        'sheets.data.rowData.values.effectiveFormat,sheets.data.startRow,sheets.data.startColumn,sheets.properties.title,sheets.properties.sheetId',
+    });
+    return response.data;
+  } catch (error: any) {
+    if (error.code === 404) {
+      throw new UserError(`Spreadsheet not found (ID: ${spreadsheetId}). Check the ID.`);
+    }
+    if (error.code === 403) {
+      throw new UserError(
+        `Permission denied for spreadsheet (ID: ${spreadsheetId}). Ensure you have read access.`
+      );
+    }
+    throw new UserError(`Failed to get cell formatting: ${error.message || 'Unknown error'}`);
+  }
+}
+
+/**
  * Creates a new sheet/tab in a spreadsheet
  */
 export async function addSheet(
