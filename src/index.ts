@@ -28,6 +28,18 @@ if (process.argv[2] === 'auth') {
 
 // --- Server startup ---
 
+// Exit cleanly when the parent process (Claude/VSCode) dies.
+// The StdioServerTransport in @modelcontextprotocol/sdk does not handle stdin
+// 'end'/'close' events, so orphaned MCP processes spin at 100% CPU indefinitely.
+process.stdin.on('end', () => {
+  logger.info('stdin ended (parent process died). Exiting.');
+  process.exit(0);
+});
+process.stdin.on('close', () => {
+  logger.info('stdin closed (parent process died). Exiting.');
+  process.exit(0);
+});
+
 // Set up process-level unhandled error/rejection handlers to prevent crashes
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught Exception:', error);
