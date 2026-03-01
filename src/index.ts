@@ -29,16 +29,19 @@ if (process.argv[2] === 'auth') {
 // --- Server startup ---
 
 // Exit cleanly when the parent process (Claude/VSCode) dies.
-// The StdioServerTransport in @modelcontextprotocol/sdk does not handle stdin
-// 'end'/'close' events, so orphaned MCP processes spin at 100% CPU indefinitely.
-process.stdin.on('end', () => {
-  logger.info('stdin ended (parent process died). Exiting.');
-  process.exit(0);
-});
-process.stdin.on('close', () => {
-  logger.info('stdin closed (parent process died). Exiting.');
-  process.exit(0);
-});
+// The stdin 'end'/'close' approach is unreliable on macOS — events often don't
+// fire when the parent is killed. Instead, poll the parent PID directly.
+// See: https://github.com/anthropics/claude-code/issues/1935
+const parentPid = process.ppid;
+const parentCheckInterval = setInterval(() => {
+  try {
+    process.kill(parentPid, 0); // signal 0 = existence check, no actual signal sent
+  } catch {
+    logger.info(`Parent process ${parentPid} is gone. Exiting.`);
+    clearInterval(parentCheckInterval);
+    process.exit(0);
+  }
+}, 2000);
 
 // Set up process-level unhandled error/rejection handlers to prevent crashes
 process.on('uncaughtException', (error) => {
