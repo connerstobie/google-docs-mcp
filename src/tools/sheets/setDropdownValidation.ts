@@ -8,7 +8,7 @@ export function register(server: FastMCP) {
   server.addTool({
     name: 'setDropdownValidation',
     description:
-      'Adds or removes a dropdown list on a range of cells. Provide values to create a dropdown restricting input to those options. Omit values to remove dropdown validation from the range.',
+      'Adds or removes a dropdown list on a range of cells. Provide values to create a dropdown restricting input to those options, or sourceRange to populate options from a cell range. Omit both to remove dropdown validation.',
     parameters: z.object({
       spreadsheetId: z
         .string()
@@ -26,6 +26,12 @@ export function register(server: FastMCP) {
         .describe(
           'The allowed dropdown options (e.g., ["Open", "In Progress", "Done"]). Omit to remove existing dropdown validation from the range.'
         ),
+      sourceRange: z
+        .string()
+        .optional()
+        .describe(
+          'A1 notation range whose values populate the dropdown (e.g., "Sheet1!$W$1:$W$7"). Creates a ONE_OF_RANGE validation that auto-updates when the source cells change. Takes precedence over values if both are provided.'
+        ),
       strict: z
         .boolean()
         .optional()
@@ -38,11 +44,14 @@ export function register(server: FastMCP) {
     }),
     execute: async (args, { log }) => {
       const sheets = await getSheetsClient();
-      const isClearing = !args.values || args.values.length === 0;
+      const isClearing = !args.sourceRange && (!args.values || args.values.length === 0);
+      const isRange = !!args.sourceRange;
       log.info(
         isClearing
           ? `Clearing dropdown validation on "${args.range}" in spreadsheet ${args.spreadsheetId}`
-          : `Setting dropdown validation on "${args.range}" with ${args.values!.length} options in spreadsheet ${args.spreadsheetId}`
+          : isRange
+            ? `Setting range-based dropdown on "${args.range}" from "${args.sourceRange}" in spreadsheet ${args.spreadsheetId}`
+            : `Setting dropdown validation on "${args.range}" with ${args.values!.length} options in spreadsheet ${args.spreadsheetId}`
       );
 
       try {
@@ -50,13 +59,17 @@ export function register(server: FastMCP) {
           sheets,
           args.spreadsheetId,
           args.range,
-          args.values,
+          args.sourceRange ? undefined : args.values,
           args.strict,
-          args.inputMessage
+          args.inputMessage,
+          args.sourceRange
         );
 
         if (isClearing) {
           return `Successfully removed dropdown validation from range "${args.range}".`;
+        }
+        if (isRange) {
+          return `Successfully set range-based dropdown on "${args.range}" referencing "${args.sourceRange}".`;
         }
         return `Successfully added dropdown validation to range "${args.range}" with ${args.values!.length} options: ${args.values!.join(', ')}.`;
       } catch (error: any) {

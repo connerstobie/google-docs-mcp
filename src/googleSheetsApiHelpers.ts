@@ -563,7 +563,9 @@ export async function freezeRowsAndColumns(
 /**
  * Sets or clears dropdown data validation on a range of cells.
  * When values are provided, creates a ONE_OF_LIST validation rule.
- * When values are omitted or empty, clears any existing validation from the range.
+ * When sourceRange is provided, creates a ONE_OF_RANGE validation rule that
+ * auto-updates when the source cells change.
+ * When neither is provided, clears any existing validation from the range.
  */
 export async function setDropdownValidation(
   sheets: Sheets,
@@ -571,25 +573,46 @@ export async function setDropdownValidation(
   range: string,
   values?: string[],
   strict: boolean = true,
-  inputMessage?: string
+  inputMessage?: string,
+  sourceRange?: string
 ): Promise<sheets_v4.Schema$BatchUpdateSpreadsheetResponse> {
   try {
     const { sheetName, a1Range } = parseRange(range);
     const sheetId = await resolveSheetId(sheets, spreadsheetId, sheetName);
     const gridRange = parseA1ToGridRange(a1Range, sheetId);
 
-    const rule =
-      values && values.length > 0
-        ? {
-            condition: {
-              type: 'ONE_OF_LIST' as const,
-              values: values.map((v) => ({ userEnteredValue: v })),
+    let rule: sheets_v4.Schema$DataValidationRule | undefined;
+
+    if (sourceRange) {
+      // ONE_OF_RANGE: dropdown populated from a cell range
+      const { sheetName: srcSheet, a1Range: srcA1 } = parseRange(sourceRange);
+      const srcSheetId = await resolveSheetId(sheets, spreadsheetId, srcSheet);
+      const srcGridRange = parseA1ToGridRange(srcA1, srcSheetId);
+      rule = {
+        condition: {
+          type: 'ONE_OF_RANGE' as const,
+          values: [
+            {
+              userEnteredValue: `=${srcSheet ? `'${srcSheet}'!` : ''}${srcA1}`,
             },
-            showCustomUi: true,
-            strict,
-            inputMessage: inputMessage || null,
-          }
-        : undefined;
+          ],
+        },
+        showCustomUi: true,
+        strict,
+        inputMessage: inputMessage || null,
+      };
+    } else if (values && values.length > 0) {
+      // ONE_OF_LIST: dropdown with hardcoded values
+      rule = {
+        condition: {
+          type: 'ONE_OF_LIST' as const,
+          values: values.map((v) => ({ userEnteredValue: v })),
+        },
+        showCustomUi: true,
+        strict,
+        inputMessage: inputMessage || null,
+      };
+    }
 
     const response = await sheets.spreadsheets.batchUpdate({
       spreadsheetId,
