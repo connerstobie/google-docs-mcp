@@ -28,17 +28,23 @@ if (process.argv[2] === 'auth') {
 
 // --- Server startup ---
 
-// Exit cleanly when the parent process (Claude/VSCode) dies.
-// The stdin 'end'/'close' approach is unreliable on macOS — events often don't
-// fire when the parent is killed. Instead, poll the parent PID directly.
-// See: https://github.com/anthropics/claude-code/issues/1935
+// Fix for 100% CPU on parent death: the @modelcontextprotocol/sdk
+// StdioServerTransport listens for 'data' and 'error' on stdin but NOT
+// 'end' or 'close'. When the parent dies and the stdin pipe breaks, libuv
+// keeps polling the dead fd at full speed → 100% CPU spin.
+// Note: on macOS, stdin 'end'/'close' events are unreliable (sometimes they
+// never fire), so the parent PID watchdog below is the reliable fallback.
+process.stdin.on('end', () => { logger.info('stdin ended. Exiting.'); process.exit(0); });
+process.stdin.on('close', () => { logger.info('stdin closed. Exiting.'); process.exit(0); });
+
+// Fallback: poll parent PID every 2 seconds. Handles the macOS case where
+// stdin events don't fire. See: https://github.com/anthropics/claude-code/issues/1935
 const parentPid = process.ppid;
-const parentCheckInterval = setInterval(() => {
+setInterval(() => {
   try {
-    process.kill(parentPid, 0); // signal 0 = existence check, no actual signal sent
+    process.kill(parentPid, 0);
   } catch {
-    logger.info(`Parent process ${parentPid} is gone. Exiting.`);
-    clearInterval(parentCheckInterval);
+    logger.info(`Parent process ${parentPid} gone. Exiting.`);
     process.exit(0);
   }
 }, 2000);
