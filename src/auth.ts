@@ -7,6 +7,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as http from 'http';
 import { fileURLToPath } from 'url';
+import * as crypto from 'crypto';
 import { logger } from './logger.js';
 
 // ---------------------------------------------------------------------------
@@ -23,11 +24,21 @@ const CREDENTIALS_PATH = path.join(projectRootDir, 'credentials.json');
 /**
  * Token storage directory following XDG Base Directory spec.
  * Uses $XDG_CONFIG_HOME if set, otherwise ~/.config.
+ *
+ * When GOOGLE_MCP_PROFILE is set, tokens are stored in a subdirectory
+ * per profile, allowing multiple Google accounts (one per project).
  */
 function getConfigDir(): string {
   const xdg = process.env.XDG_CONFIG_HOME;
   const base = xdg || path.join(os.homedir(), '.config');
-  return path.join(base, 'google-docs-mcp');
+  const baseDir = path.join(base, 'google-docs-mcp');
+  const profile = process.env.GOOGLE_MCP_PROFILE;
+  if (profile && !/^[\w-]+$/.test(profile)) {
+    throw new Error(
+      'GOOGLE_MCP_PROFILE must contain only alphanumeric characters, hyphens, or underscores.'
+    );
+  }
+  return profile ? path.join(baseDir, profile) : baseDir;
 }
 
 function getTokenPath(): string {
@@ -43,6 +54,7 @@ const SCOPES = [
   'https://www.googleapis.com/auth/drive',
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/script.projects',
+  'https://www.googleapis.com/auth/script.external_request',
 ];
 
 // ---------------------------------------------------------------------------
@@ -147,21 +159,20 @@ async function loadSavedCredentialsIfExist(): Promise<OAuth2Client | null> {
 }
 
 async function saveCredentials(client: OAuth2Client): Promise<void> {
-  const { client_secret, client_id } = await loadClientSecrets();
+  const { client_id } = await loadClientSecrets();
   const configDir = getConfigDir();
-  await fs.mkdir(configDir, { recursive: true });
+  await fs.mkdir(configDir, { recursive: true, mode: 0o700 });
   const tokenPath = getTokenPath();
   const payload = JSON.stringify(
     {
       type: 'authorized_user',
       client_id,
-      client_secret,
       refresh_token: client.credentials.refresh_token,
     },
     null,
     2
   );
-  await fs.writeFile(tokenPath, payload);
+  await fs.writeFile(tokenPath, payload, { mode: 0o600 });
   logger.info('Token stored to', tokenPath);
 }
 
@@ -174,23 +185,31 @@ async function authenticate(): Promise<OAuth2Client> {
 
   // Start a temporary local server to receive the OAuth callback
   const server = http.createServer();
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  await new Promise<void>((resolve) => server.listen(0, 'localhost', resolve));
   const port = (server.address() as { port: number }).port;
-  const redirectUri = `http://127.0.0.1:${port}`;
+  const redirectUri = `http://localhost:${port}`;
 
   const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirectUri);
+
+  const state = crypto.randomBytes(32).toString('hex');
 
   const authorizeUrl = oAuth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: SCOPES.join(' '),
+    state,
   });
 
   logger.info('Authorize this app by visiting this url:', authorizeUrl);
 
+  const AUTH_TIMEOUT_MS = 5 * 60 * 1000;
+  const timeout = setTimeout(() => {
+    server.close();
+  }, AUTH_TIMEOUT_MS);
+
   // Wait for the OAuth callback
   const code = await new Promise<string>((resolve, reject) => {
     server.on('request', (req, res) => {
-      const url = new URL(req.url!, `http://127.0.0.1:${port}`);
+      const url = new URL(req.url!, `http://localhost:${port}`);
       const authCode = url.searchParams.get('code');
       const error = url.searchParams.get('error');
 
@@ -198,7 +217,15 @@ async function authenticate(): Promise<OAuth2Client> {
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end('<h1>Authorization failed</h1><p>You can close this tab.</p>');
         reject(new Error(`Authorization error: ${error}`));
+        clearTimeout(timeout);
         server.close();
+        return;
+      }
+
+      const returnedState = url.searchParams.get('state');
+      if (returnedState !== state) {
+        res.writeHead(400, { 'Content-Type': 'text/html' });
+        res.end('<h1>Invalid state parameter</h1><p>Possible CSRF attack. Please try again.</p>');
         return;
       }
 
@@ -206,6 +233,7 @@ async function authenticate(): Promise<OAuth2Client> {
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end('<h1>Authorization successful!</h1><p>You can close this tab.</p>');
         resolve(authCode);
+        clearTimeout(timeout);
         server.close();
       }
     });

@@ -1,9 +1,10 @@
 import type { FastMCP } from 'fastmcp';
 import { UserError } from 'fastmcp';
 import { z } from 'zod';
-import { getDocsClient, getDriveClient } from '../../clients.js';
+import { getDocsClient, getDriveClient, getScriptClient } from '../../clients.js';
 import { DocumentIdParameter } from '../../types.js';
 import * as GDocsHelpers from '../../googleDocsApiHelpers.js';
+import { logger } from '../../logger.js';
 
 export function register(server: FastMCP) {
   server.addTool({
@@ -46,9 +47,9 @@ export function register(server: FastMCP) {
       }),
     execute: async (args, { log }) => {
       const docs = await getDocsClient();
+      const appsScriptDeploymentId = process.env.APPS_SCRIPT_DEPLOYMENT_ID;
 
       try {
-        // If tabId is specified, verify the tab exists
         if (args.tabId) {
           const docInfo = await docs.documents.get({
             documentId: args.documentId,
@@ -66,6 +67,54 @@ export function register(server: FastMCP) {
           }
         }
 
+        // --- Apps Script path: local files when APPS_SCRIPT_DEPLOYMENT_ID is set ---
+        if (args.localImagePath && appsScriptDeploymentId) {
+          const drive = await getDriveClient();
+          const scriptClient = await getScriptClient();
+
+          log.info(`[AppsScript] Uploading ${args.localImagePath} to Drive (no public sharing)`);
+
+          let parentFolderId: string | undefined;
+          try {
+            const docInfo = await drive.files.get({
+              fileId: args.documentId,
+              fields: 'parents',
+              supportsAllDrives: true,
+            });
+            if (docInfo.data.parents && docInfo.data.parents.length > 0) {
+              parentFolderId = docInfo.data.parents[0];
+            }
+          } catch (folderError) {
+            log.warn(
+              `Could not determine document's parent folder, using Drive root: ${folderError}`
+            );
+          }
+
+          const driveFileId = await GDocsHelpers.uploadImageToDrive(
+            drive,
+            args.localImagePath,
+            parentFolderId,
+            true // skipPublicSharing
+          );
+
+          log.info(
+            `[AppsScript] Inserting image via marker at index ${args.index} (fileId: ${driveFileId})`
+          );
+
+          await GDocsHelpers.insertImageViaAppsScript(
+            docs,
+            scriptClient,
+            appsScriptDeploymentId,
+            args.documentId,
+            driveFileId,
+            args.index,
+            args.tabId
+          );
+
+          return `Successfully inserted local image at index ${args.index} via Apps Script${args.tabId ? ` in tab ${args.tabId}` : ''}.`;
+        }
+
+        // --- Standard path: public URL insertion via Docs API ---
         let resolvedUrl: string;
 
         if (args.localImagePath) {
@@ -74,7 +123,6 @@ export function register(server: FastMCP) {
             `Uploading local image ${args.localImagePath} and inserting at index ${args.index} in doc ${args.documentId}${args.tabId ? ` (tab: ${args.tabId})` : ''}`
           );
 
-          // Get the document's parent folder
           let parentFolderId: string | undefined;
           try {
             const docInfo = await drive.files.get({
@@ -94,7 +142,8 @@ export function register(server: FastMCP) {
           resolvedUrl = await GDocsHelpers.uploadImageToDrive(
             drive,
             args.localImagePath,
-            parentFolderId
+            parentFolderId,
+            false // explicit: needs public URL for Docs API insertion
           );
           log.info(`Image uploaded successfully, URL: ${resolvedUrl}`);
         } else {

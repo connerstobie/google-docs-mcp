@@ -109,7 +109,7 @@ export function register(server: FastMCP) {
         if (args.bold !== undefined) rule.bold = args.bold;
         if (args.italic !== undefined) rule.italic = args.italic;
 
-        await SheetsHelpers.addConditionalFormatRule(
+        await SheetsHelpers.addConditionalFormatRuleAdvanced(
           sheets,
           args.spreadsheetId,
           sheetId,

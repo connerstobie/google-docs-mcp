@@ -36,8 +36,7 @@ export async function executeBatchUpdate(
     return response.data;
   } catch (error: any) {
     logger.error(
-      `Google API batchUpdate Error for doc ${documentId}:`,
-      error.response?.data || error.message
+      `Google API batchUpdate Error for doc ${documentId}: ${error.message || 'Unknown error'}`
     );
     // Translate common API errors to UserErrors
     if (error.code === 400 && error.message.includes('Invalid requests')) {
@@ -922,26 +921,34 @@ export async function insertInlineImage(
 }
 
 /**
- * Uploads a local image file to Google Drive and returns its public URL
- * @param drive - Google Drive API client
- * @param localFilePath - Path to the local image file
- * @param parentFolderId - Optional parent folder ID (defaults to root)
- * @returns Promise with the public webContentLink URL
+ * Uploads a local image file to Google Drive.
+ *
+ * When `skipPublicSharing` is false (default), the file is made publicly
+ * readable and its webContentLink is returned — required for the Docs API
+ * insertInlineImage approach.
+ *
+ * When `skipPublicSharing` is true, only the Drive file ID is returned.
+ * Use this with the Apps Script insertion path where no public URL is needed.
  */
 export async function uploadImageToDrive(
   drive: any, // drive_v3.Drive type
   localFilePath: string,
-  parentFolderId?: string
+  parentFolderId?: string,
+  skipPublicSharing: boolean = true
 ): Promise<string> {
   const fs = await import('fs');
   const path = await import('path');
 
-  // Verify file exists
   if (!fs.existsSync(localFilePath)) {
     throw new UserError(`Image file not found: ${localFilePath}`);
   }
 
-  // Get file name and mime type
+  const resolvedPath = path.resolve(localFilePath);
+  const cwd = path.resolve(process.cwd());
+  if (!resolvedPath.startsWith(cwd + path.sep) && resolvedPath !== cwd) {
+    throw new UserError('Image file path must be within the working directory.');
+  }
+
   const fileName = path.basename(localFilePath);
   const mimeTypeMap: { [key: string]: string } = {
     '.jpg': 'image/jpeg',
@@ -956,7 +963,6 @@ export async function uploadImageToDrive(
   const ext = path.extname(localFilePath).toLowerCase();
   const mimeType = mimeTypeMap[ext] || 'application/octet-stream';
 
-  // Upload file to Drive
   const fileMetadata: any = {
     name: fileName,
     mimeType: mimeType,
@@ -983,7 +989,10 @@ export async function uploadImageToDrive(
     throw new Error('Failed to upload image to Drive - no file ID returned');
   }
 
-  // Make the file publicly readable
+  if (skipPublicSharing) {
+    return fileId;
+  }
+
   await drive.permissions.create({
     fileId: fileId,
     requestBody: {
@@ -993,7 +1002,6 @@ export async function uploadImageToDrive(
     supportsAllDrives: true,
   });
 
-  // Get the webContentLink
   const fileInfo = await drive.files.get({
     fileId: fileId,
     fields: 'webContentLink',
@@ -1006,6 +1014,49 @@ export async function uploadImageToDrive(
   }
 
   return webContentLink;
+}
+
+/**
+ * Inserts an image into a Google Doc via Apps Script.
+ *
+ * Flow:
+ *   1. Insert a unique marker string at the target index using the Docs API.
+ *   2. Call the deployed Apps Script which finds the marker and replaces it
+ *      with the actual image blob from Drive (no public sharing needed).
+ */
+export async function insertImageViaAppsScript(
+  docs: Docs,
+  scriptClient: any, // script_v1.Script type
+  deploymentId: string,
+  documentId: string,
+  driveFileId: string,
+  charIndex: number,
+  tabId?: string
+): Promise<void> {
+  const marker = `[mcp-img-${driveFileId}]`;
+
+  // Step 1: Insert marker at the requested position via Docs API
+  const location: any = { index: charIndex };
+  if (tabId) {
+    location.tabId = tabId;
+  }
+
+  await executeBatchUpdate(docs, documentId, [{ insertText: { location, text: marker } }]);
+
+  // Step 2: Call Apps Script to replace the marker with the image
+  const response = await scriptClient.scripts.run({
+    scriptId: deploymentId,
+    requestBody: {
+      function: 'insertImageByFileId',
+      parameters: [documentId, driveFileId],
+    },
+  });
+
+  const result = response.data?.response?.result;
+  if (!result || !result.success) {
+    const msg = result?.message || 'Unknown Apps Script error';
+    throw new Error(`Apps Script image insertion failed: ${msg}`);
+  }
 }
 
 // --- Tab Management Helpers ---

@@ -4,40 +4,40 @@ import { UserError } from 'fastmcp';
 import { OAuth2Client } from 'google-auth-library';
 import { authorize } from './auth.js';
 import { logger } from './logger.js';
+import { requestClients } from './remoteWrapper.js';
+
+const isRemote = process.env.MCP_TRANSPORT === 'httpStream';
 
 let authClient: OAuth2Client | null = null;
 let googleDocs: docs_v1.Docs | null = null;
 let googleDrive: drive_v3.Drive | null = null;
 let googleSheets: sheets_v4.Sheets | null = null;
-let googleAppsScript: script_v1.Script | null = null;
+let googleScript: script_v1.Script | null = null;
 
 // --- Initialization ---
 export async function initializeGoogleClient() {
-  if (googleDocs && googleDrive && googleSheets && googleAppsScript)
-    return { authClient, googleDocs, googleDrive, googleSheets, googleAppsScript };
+  if (googleDocs && googleDrive && googleSheets)
+    return { authClient, googleDocs, googleDrive, googleSheets, googleScript };
   if (!authClient) {
-    // Check authClient instead of googleDocs to allow re-attempt
     try {
       logger.info('Attempting to authorize Google API client...');
       const client = await authorize();
-      authClient = client; // Assign client here
+      authClient = client;
       googleDocs = google.docs({ version: 'v1', auth: authClient });
       googleDrive = google.drive({ version: 'v3', auth: authClient });
       googleSheets = google.sheets({ version: 'v4', auth: authClient });
-      googleAppsScript = google.script({ version: 'v1', auth: authClient });
+      googleScript = google.script({ version: 'v1', auth: authClient });
       logger.info('Google API client authorized successfully.');
     } catch (error) {
       logger.error('FATAL: Failed to initialize Google API client:', error);
-      authClient = null; // Reset on failure
+      authClient = null;
       googleDocs = null;
       googleDrive = null;
       googleSheets = null;
-      googleAppsScript = null;
-      // Decide if server should exit or just fail tools
+      googleScript = null;
       throw new Error('Google client initialization failed. Cannot start server tools.');
     }
   }
-  // Ensure clients are set if authClient is valid
   if (authClient && !googleDocs) {
     googleDocs = google.docs({ version: 'v1', auth: authClient });
   }
@@ -47,19 +47,24 @@ export async function initializeGoogleClient() {
   if (authClient && !googleSheets) {
     googleSheets = google.sheets({ version: 'v4', auth: authClient });
   }
-  if (authClient && !googleAppsScript) {
-    googleAppsScript = google.script({ version: 'v1', auth: authClient });
+  if (authClient && !googleScript) {
+    googleScript = google.script({ version: 'v1', auth: authClient });
   }
 
-  if (!googleDocs || !googleDrive || !googleSheets || !googleAppsScript) {
-    throw new Error('Google API clients could not be initialized.');
+  if (!googleDocs || !googleDrive || !googleSheets) {
+    throw new Error('Google Docs, Drive, and Sheets clients could not be initialized.');
   }
 
-  return { authClient, googleDocs, googleDrive, googleSheets, googleAppsScript };
+  return { authClient, googleDocs, googleDrive, googleSheets, googleScript };
 }
 
 // --- Helper to get Docs client within tools ---
 export async function getDocsClient() {
+  const remote = requestClients.getStore();
+  if (remote) return remote.docs;
+  if (isRemote) {
+    throw new UserError('Request context missing. Tool must be called within an MCP request.');
+  }
   const { googleDocs: docs } = await initializeGoogleClient();
   if (!docs) {
     throw new UserError(
@@ -71,6 +76,11 @@ export async function getDocsClient() {
 
 // --- Helper to get Drive client within tools ---
 export async function getDriveClient() {
+  const remote = requestClients.getStore();
+  if (remote) return remote.drive;
+  if (isRemote) {
+    throw new UserError('Request context missing. Tool must be called within an MCP request.');
+  }
   const { googleDrive: drive } = await initializeGoogleClient();
   if (!drive) {
     throw new UserError(
@@ -82,6 +92,11 @@ export async function getDriveClient() {
 
 // --- Helper to get Sheets client within tools ---
 export async function getSheetsClient() {
+  const remote = requestClients.getStore();
+  if (remote) return remote.sheets;
+  if (isRemote) {
+    throw new UserError('Request context missing. Tool must be called within an MCP request.');
+  }
   const { googleSheets: sheets } = await initializeGoogleClient();
   if (!sheets) {
     throw new UserError(
@@ -91,19 +106,13 @@ export async function getSheetsClient() {
   return sheets;
 }
 
-// --- Helper to get Apps Script client within tools ---
-export async function getAppsScriptClient() {
-  const { googleAppsScript: script } = await initializeGoogleClient();
-  if (!script) {
-    throw new UserError(
-      'Google Apps Script client is not initialized. Authentication might have failed during startup or lost connection.'
-    );
-  }
-  return script;
-}
-
 // --- Helper to get Auth client for direct API usage ---
 export async function getAuthClient() {
+  const remote = requestClients.getStore();
+  if (remote) return remote.auth;
+  if (isRemote) {
+    throw new UserError('Request context missing. Tool must be called within an MCP request.');
+  }
   const { authClient: client } = await initializeGoogleClient();
   if (!client) {
     throw new UserError(
@@ -112,3 +121,22 @@ export async function getAuthClient() {
   }
   return client;
 }
+
+// --- Helper to get Script client within tools ---
+export async function getScriptClient() {
+  const remote = requestClients.getStore();
+  if (remote) return remote.script;
+  if (isRemote) {
+    throw new UserError('Request context missing. Tool must be called within an MCP request.');
+  }
+  const { googleScript: script } = await initializeGoogleClient();
+  if (!script) {
+    throw new UserError(
+      'Google Script client is not initialized. Authentication might have failed during startup or lost connection.'
+    );
+  }
+  return script;
+}
+
+// --- Alias for backward compatibility with local tools ---
+export const getAppsScriptClient = getScriptClient;
