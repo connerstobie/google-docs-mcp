@@ -145,6 +145,8 @@ Tools across Google Docs, Sheets, and Drive:
 | `groupRows`                | Group rows for collapsible sections        |
 | `ungroupAllRows`           | Remove all row groupings                   |
 | `insertChart`              | Create a chart from data                   |
+| `listCharts`               | List charts with IDs and full specs         |
+| `updateChart`              | Edit an existing chart in place             |
 | `deleteChart`              | Remove a chart                             |
 
 ### Google Sheets Tables

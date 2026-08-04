@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.8.0
+
+### Added
+- `listCharts` — lists every chart with its numeric chart ID and full spec: title, type, stacking, legend position, axis titles, domain range, and each series range in stacking order with its explicit color and target axis, plus anchor cell and pixel size. Charts are embedded objects rather than cell values, so `readSpreadsheet` returns nothing for a sheet holding only charts. Without this there was no way to tell an empty tab from one full of charts, and no way to obtain the chart ID that `deleteChart` requires.
+- `updateChart` — edits an existing chart in place, keeping its ID and every property not passed. Covers title, subtitle, chart type, stacking, legend position, axis titles, domain range, the full series list including stacking order, per-series color and name, header count, and the chart's anchor cell and pixel size. It reads the current spec and patches it, because the underlying `updateChartSpec` request replaces the spec wholesale.
+
+### Google API constraints found while testing this against the live API
+- The Sheets API has no series-name field. A series is named by the first cell of its source range when `headerCount` is 1, so `updateChart` takes a `nameCell` and merges it into the range when it sits immediately before the values. A detached label has to be passed as a second source, which Google accepts only for column-oriented data listed in ascending sheet order, and rejects for row-oriented series with `ChartSourceRange ranges require all rows or all columns to have length of 1`. Both failure modes are now caught locally with an explanatory error instead of surfacing the API's generic contiguity complaint.
+- `updateEmbeddedObjectPosition` rejects sub-field masks (`Invalid field: overlay_position`), so the position is replaced whole, merged from the existing overlay.
+- The value axis number format is not exposed by the API. It is inferred from the source cells, so a single stray date-formatted cell anywhere in a chart's range renders the whole axis as dates.
+
 ## 1.1.0
 
 ### Fixed
