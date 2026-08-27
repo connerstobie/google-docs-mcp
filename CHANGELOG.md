@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.0
+
+### Added
+- **Self-auditing sheet writes.** Every mutation to a spreadsheet (`values.update/append/batchUpdate/clear/batchClear` and structural `batchUpdate`, which includes row deletions) now appends a row — timestamp, action, detail, `claude-mcp` — to a "Claude MCP Log" tab in the target spreadsheet, created automatically on first write. Enforced by wrapping the Sheets client at its single access point (`getSheetsClient`, both local and remote request paths), so no tool present or future can write unlogged. `deleteDimension`/`deleteRange` entries record exact row/column indexes. Audit rows land only after the mutation succeeds, audit failures never fail the user's edit, and writes to the log tab itself are excluded to prevent recursion. Born from the 26 Aug 2026 bill-tracker incident: rows deleted by a sheets session were indistinguishable from the account owner's own edits, because MCP OAuth acts as the owner in every record Google keeps.
+
 ## 1.8.0
 
 ### Added

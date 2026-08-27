@@ -5,6 +5,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { authorize } from './auth.js';
 import { logger } from './logger.js';
 import { requestClients } from './remoteWrapper.js';
+import { wrapSheetsClientWithAudit } from './sheetsAudit.js';
 
 const isRemote = process.env.MCP_TRANSPORT === 'httpStream';
 
@@ -93,7 +94,11 @@ export async function getDriveClient() {
 // --- Helper to get Sheets client within tools ---
 export async function getSheetsClient() {
   const remote = requestClients.getStore();
-  if (remote) return remote.sheets;
+  // Both paths run through the audit wrapper — every sheet mutation appends
+  // a row to the target spreadsheet's "Claude MCP Log" tab, so a Claude
+  // session's edits are distinguishable from the account owner's own. See
+  // sheetsAudit.ts (26 Aug 2026 bill-tracker deletion incident).
+  if (remote) return wrapSheetsClientWithAudit(remote.sheets);
   if (isRemote) {
     throw new UserError('Request context missing. Tool must be called within an MCP request.');
   }
@@ -103,7 +108,7 @@ export async function getSheetsClient() {
       'Google Sheets client is not initialized. Authentication might have failed during startup or lost connection.'
     );
   }
-  return sheets;
+  return wrapSheetsClientWithAudit(sheets);
 }
 
 // --- Helper to get Auth client for direct API usage ---
