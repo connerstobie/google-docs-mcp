@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.9.1
+
+### Security
+- **27 dependency advisories patched, all inside existing ranges (BILL-176).** Found by an audit of every repo on 9 Oct 2026. Critical: protobufjs (arbitrary code execution, now 7.6.6, through `@google-cloud/firestore` and `@grpc/grpc-js`) and proxy-addr (IP spoofing, now 2.0.8). High: `@modelcontextprotocol/sdk` (now 1.32.1), `@grpc/grpc-js`, axios, undici, hono, form-data, path-to-regexp, fast-uri, ip-address, linkify-it, nanoid, postcss, source-map-js, vite and vitest (dev), brace-expansion. No direct dependency changed. `npm audit`: 0 vulnerabilities; 177 tests pass; the server starts with its 84 tools and a live `listDriveFiles` call answers.
+- npm 10.9.4 crashed in `npm audit fix` on this lockfile ("Cannot read properties of null (reading 'edgesOut')"); the fix was resolved with npm 11 and reconciled with npm 10 so `npm ci` installs it.
+
 ## 1.9.0
 
 ### Added
